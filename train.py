@@ -27,19 +27,17 @@ def train():
         # training actor
         for x, y in reader.read(config.TRAIN_BATCH_SIZE):
             for sentence, target_sentence in zip(x, y):
-                for idx, word in enumerate(sentence):
-                    states, actions, probs = actor(sentence)
-                    predicted_sentence = [lang.index2word[action] for action in actions]
+                states, actions, probs = actor(sentence)
+                predicted_sentence = [lang.index2word[action] for action in actions]
 
-                    # todo think maybe about a better reward function
-                    rewards = [bleu_reward(target_sentence[:i+1], target_sentence[:i+1]) for i in range(len(predicted_sentence))]
+                # todo think maybe about a better reward function
+                rewards = [bleu_reward(target_sentence[:i+1], target_sentence[:i+1]) for i in range(len(predicted_sentence))]
 
-                    for i in range(len(sentence)):
-                        if i == len(sentence) - 1:
-                            experiences_buffer.insert(0, Experience(states[i], actions[i], None, rewards[i], probs[i]))
-                        else:
-                            experiences_buffer.insert(0, Experience(states[i], actions[i], states[i+1], rewards[i], probs[i]))
-
+                for i in range(len(sentence)):
+                    if i == len(sentence) - 1:
+                        experiences_buffer.insert(0, Experience(states[i], actions[i], None, rewards[i], probs[i]))
+                    else:
+                        experiences_buffer.insert(0, Experience(states[i], actions[i], states[i+1], rewards[i], probs[i]))
 
         q_estimated = torch.zeros(config.Q_BATCH_SIZE, 1)
         q_s = torch.zeros(config.Q_BATCH_SIZE, 1)
@@ -54,7 +52,7 @@ def train():
             if exp.next_state is not None:
                 with torch.no_grad():
                     embedding = actor.encoder.embedding
-                    q_s[idx] +=  config.GAMMA * max([critic(exp.next_state, action) for action in get_possible_actions(lang, embedding)])
+                    q_s[idx] += config.GAMMA * max([critic(exp.next_state, action) for action in get_possible_actions(lang, embedding)])
 
             critic_optimizer.zero_grad()
             loss = critic_criterion(q_s, q_estimated)
@@ -88,19 +86,6 @@ def get_possible_actions(lang, embedding):
 # set encoding from word2vec
 # set data reader
 # check q function recommended layers
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 if __name__ == '__main__':
