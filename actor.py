@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.functional as F
+import torch.nn.functional as F
 
 import config
 from language import SOS_TOKEN_INDEX, EOS_TOKEN_INDEX
@@ -10,7 +10,7 @@ class Actor(nn.Module):
 
     def __init__(self, embedding_size, hidden_size, output_lang):
         self.encoder = EncoderRNN(embedding_size, hidden_size)
-        self.decoder = AttnDecoderRNN(embedding_size, hidden_size)
+        self.decoder = AttnDecoderRNN(hidden_size, hidden_size)
         self.output_lang = output_lang
 
     def forward(self, x):
@@ -23,26 +23,26 @@ class Actor(nn.Module):
             encoder_outputs[ei] += encoder_output[0, 0]
 
         decoder_input = torch.tensor([[SOS_TOKEN_INDEX]])  # SOS
-
         decoder_hidden = encoder_hidden
-
-        decoded_words = []
         decoder_attentions = torch.zeros(config.MAX_LENGTH, config.MAX_LENGTH)
 
+        states = [decoder_hidden]
+        actions = []
+        probs = []
+
         for di in range(config.MAX_LENGTH):
-            prev_hidden = decoder_hidden
             decoder_output, decoder_hidden, decoder_attention = self.decoder(decoder_input, decoder_hidden, encoder_outputs)
+            states.append(decoder_hidden)
             decoder_attentions[di] = decoder_attention.data
             topv, topi = decoder_output.data.topk(1)
-            if topi.item() == EOS_TOKEN_INDEX:
-                decoded_words.append(config.EOS_TOKEN)
+            actions.append(topi.item())
+            if topi.item() == EOS_TOKEN_INDEX: # if we finished the sequence
                 break
-            else:
-                decoded_words.append(self.output_lang.index2word[topi.item()])
 
             decoder_input = topi.squeeze().detach()
 
-        return decoded_words, decoder_attentions[:di + 1]
+        actions.append(None)  # last state is terminal and so does not have an action
+        return states, actions, probs
 
 
 class EncoderRNN(nn.Module):
