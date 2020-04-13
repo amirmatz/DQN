@@ -54,10 +54,10 @@ def train():
                     embedding = actor.encoder.embedding
                     q_s[idx] += config.GAMMA * max([critic(exp.next_state, action) for action in get_possible_actions(lang, embedding)])
 
-            critic_optimizer.zero_grad()
-            loss = critic_criterion(q_s, q_estimated)
-            loss.backward()
-            critic_optimizer.step()
+        critic_optimizer.zero_grad()
+        loss = critic_criterion(q_s, q_estimated)
+        loss.backward()
+        critic_optimizer.step()
 
 
         # updating seq2seq model
