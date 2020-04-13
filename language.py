@@ -21,5 +21,8 @@ class Lang:
             self.index2word[self.n_words] = word
             self.n_words += 1
 
+    def get_actions(self):
+        pass # todo add special toekns that can be viewed as actions
+
     def words(self):
         return (word for word in self.word2index.keys())

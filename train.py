@@ -1,4 +1,5 @@
 from collections import deque, namedtuple
+import itertools
 import random
 import torch
 
@@ -9,7 +10,7 @@ from dataset_reader import DataSetReader
 from language import Lang
 from reward import bleu_reward
 
-Experience = namedtuple('Experience', ['state', 'action', 'new_state', 'reward', 'probs'])
+Experience = namedtuple('Experience', ['state', 'action', 'new_state', 'reward', 'probs', 'sentence'])
 
 
 def train():
@@ -35,9 +36,9 @@ def train():
 
                 for i in range(len(sentence)):
                     if i == len(sentence) - 1:
-                        experiences_buffer.insert(0, Experience(states[i], actions[i], None, rewards[i], probs[i]))
+                        experiences_buffer.insert(0, Experience(states[i], actions[i], None, rewards[i], probs[i], sentence))
                     else:
-                        experiences_buffer.insert(0, Experience(states[i], actions[i], states[i+1], rewards[i], probs[i]))
+                        experiences_buffer.insert(0, Experience(states[i], actions[i], states[i+1], rewards[i], probs[i], sentence))
 
         q_estimated = torch.zeros(config.Q_BATCH_SIZE, 1)
         q_s = torch.zeros(config.Q_BATCH_SIZE, 1)
@@ -52,7 +53,7 @@ def train():
             if exp.next_state is not None:
                 with torch.no_grad():
                     embedding = actor.encoder.embedding
-                    q_s[idx] += config.GAMMA * max([critic(exp.next_state, action) for action in get_possible_actions(lang, embedding)])
+                    q_s[idx] += config.GAMMA * max([critic(exp.next_state, action) for action in get_possible_actions(lang, exp.sentence, embedding)])
 
         critic_optimizer.zero_grad()
         loss = critic_criterion(q_s, q_estimated)
@@ -62,7 +63,6 @@ def train():
 
         # updating seq2seq model
         actor_optimizer.zero_grad()
-        # TODO: check if qs estimated should be calculated here
         loss = shared_loss(experiences_buffer, q_estimated)
         loss.backward()
         actor_optimizer.step()
@@ -78,9 +78,9 @@ def shared_loss(experience_buffer, q_estimated):
     return torch.div(torch.sum(torch.mul(probs, q_estimated)), config.TRAIN_BATCH_SIZE)
 
 
-def get_possible_actions(lang, embedding):
+def get_possible_actions(lang, sentence, embedding):
     with torch.no_grad():
-        return (embedding(word) for word in lang.words())
+        return (embedding(word) for word in itertools.chain(sentence, lang.get_actions()))
 
 # todo
 # set encoding from word2vec
