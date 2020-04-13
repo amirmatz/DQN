@@ -61,8 +61,8 @@ def train():
 
 
         # updating seq2seq model
-        actor.zero_grad()
         actor_optimizer.zero_grad()
+        # TODO: check if qs estimated should be calculated here
         loss = shared_loss(experiences_buffer, q_estimated)
         loss.backward()
         actor_optimizer.step()
@@ -73,7 +73,7 @@ def train():
 def shared_loss(experience_buffer, q_estimated):
     probs = torch.zeros(len(experience_buffer), 1, dtype=torch.float64)
     for i in range(len(experience_buffer)):
-        probs[i] = experience_buffer[i][2].probs
+        probs[i] = experience_buffer[i].probs
 
     return torch.div(torch.sum(torch.mul(probs, q_estimated)), config.TRAIN_BATCH_SIZE)
 
