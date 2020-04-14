@@ -34,7 +34,7 @@ def train():
                 predicted_sentence = [lang.index2word[action] for action in actions]
 
                 # todo think maybe about a better reward function
-                rewards = [bleu_reward(target_sentence[:i+1], target_sentence[:i+1]) for i in range(len(predicted_sentence))]
+                rewards = [bleu_reward(target_sentence[:i+1], predicted_sentence[:i+1]) for i in range(max(len(target_sentence),len(predicted_sentence)))]
 
                 for i in range(len(sentence)):
                     if i == len(sentence) - 1:
