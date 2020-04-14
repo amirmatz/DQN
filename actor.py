@@ -9,10 +9,11 @@ from language import SOS_TOKEN_INDEX, EOS_TOKEN_INDEX
 
 class Actor(nn.Module):
 
-    def __init__(self, embedding_size, hidden_size, output_lang):
+    def __init__(self, embedding_size, hidden_size, output_lang, embedding):
         self.encoder = EncoderRNN(embedding_size, hidden_size)
         self.decoder = AttnDecoderRNN(hidden_size, output_lang.size())
         self.output_lang = output_lang
+        self.embedding = embedding
 
     def forward(self, x, allowed_actions):
         encoder_hidden = self.encoder.init_hidden()
@@ -20,7 +21,7 @@ class Actor(nn.Module):
         encoder_outputs = torch.zeros(config.MAX_LENGTH, self.encoder.hidden_size)
 
         for ei in range(input_length):
-            encoder_output, encoder_hidden = self.encoder(x[ei], encoder_hidden)
+            encoder_output, encoder_hidden = self.encoder(self.embedding[x[ei]], encoder_hidden)
             encoder_outputs[ei] += encoder_output[0, 0]
 
         decoder_input = torch.tensor([[SOS_TOKEN_INDEX]])  # SOS
@@ -54,12 +55,10 @@ class EncoderRNN(nn.Module):
     def __init__(self, embedding_size, hidden_size):
         super(EncoderRNN, self).__init__()
         self.hidden_size = hidden_size
-        self.embedding = nn.Embedding(embedding_size, hidden_size)
-        self.lstm = nn.LSTM(hidden_size, hidden_size)
+        self.lstm = nn.LSTM(embedding_size, hidden_size)
 
     def forward(self, input, hidden):
-        output = self.embedding(input).view(1, 1, -1)
-        output, hidden = self.lstm(output, hidden)
+        output, hidden = self.lstm(input, hidden)
         return output, hidden
 
     def init_hidden(self):

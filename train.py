@@ -18,7 +18,7 @@ def train():
     experiences_buffer = deque(maxlen=config.MAX_EXPERIENCES_SIZE)
     word2vec = Word2Vec()
     lang = Lang(word2vec.get_vocab())
-    actor = Actor(config.EMBEDDING_SIZE, config.STATE_SIZE, lang)
+    actor = Actor(config.EMBEDDING_SIZE, config.STATE_SIZE, lang, word2vec)
     critic = Critic(config.STATE_SIZE, config.EMBEDDING_SIZE, config.CRITIC_HIDDEN_SIZE)
     reader = DataSetReader('train', lang)
     critic_optimizer = torch.optim.Adam(critic.parameters())
@@ -54,8 +54,7 @@ def train():
             q_s[idx] = exp.reward
             if exp.next_state is not None:
                 with torch.no_grad():
-                    embedding = actor.encoder.embedding
-                    q_s[idx] += config.GAMMA * max([critic(exp.next_state, embedding(action)) for action in get_possible_actions(lang, exp.sentence)])
+                    q_s[idx] += config.GAMMA * max([critic(exp.next_state, word2vec(action)) for action in get_possible_actions(lang, exp.sentence)])
 
         critic_optimizer.zero_grad()
         loss = critic_criterion(q_s, q_estimated)
