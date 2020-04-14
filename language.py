@@ -26,3 +26,6 @@ class Lang:
 
     def words(self):
         return (word for word in self.word2index.keys())
+
+    def size(self):
+        return self.n_words

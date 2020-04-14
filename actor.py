@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.distributions import Categorical
 
 import config
 from language import SOS_TOKEN_INDEX, EOS_TOKEN_INDEX
@@ -10,10 +11,10 @@ class Actor(nn.Module):
 
     def __init__(self, embedding_size, hidden_size, output_lang):
         self.encoder = EncoderRNN(embedding_size, hidden_size)
-        self.decoder = AttnDecoderRNN(hidden_size, hidden_size)
+        self.decoder = AttnDecoderRNN(hidden_size, output_lang.size())
         self.output_lang = output_lang
 
-    def forward(self, x):
+    def forward(self, x, allowed_actions):
         encoder_hidden = self.encoder.init_hidden()
         input_length = len(x)
         encoder_outputs = torch.zeros(config.MAX_LENGTH, self.encoder.hidden_size)
@@ -28,20 +29,24 @@ class Actor(nn.Module):
 
         states = [decoder_hidden]
         actions = []
+        allowed_actions_indices = [self.output_lang.index2word[act] for act in allowed_actions]
         probs = []
 
         for di in range(config.MAX_LENGTH):
             decoder_output, decoder_hidden, decoder_attention = self.decoder(decoder_input, decoder_hidden, encoder_outputs)
             states.append(decoder_hidden)
             decoder_attentions[di] = decoder_attention.data
-            topv, topi = decoder_output.data.topk(1)
-            actions.append(topi.item())
-            if topi.item() == EOS_TOKEN_INDEX: # if we finished the sequence
+            distribution = Categorical(logits=decoder_output.data)
+            action = distribution.sample().detach()
+            probs.append(decoder_output.data[action])
+            actions.append(action)
+            if action == EOS_TOKEN_INDEX: # if we finished the sequence
                 break
 
-            decoder_input = topi.squeeze().detach()
+            decoder_input = action
 
         actions.append(None)  # last state is terminal and so does not have an action
+        probs.append(0)
         return states, actions, probs
 
 
@@ -53,8 +58,7 @@ class EncoderRNN(nn.Module):
         self.lstm = nn.LSTM(hidden_size, hidden_size)
 
     def forward(self, input, hidden):
-        embedded = self.embedding(input).view(1, 1, -1)
-        output = embedded
+        output = self.embedding(input).view(1, 1, -1)
         output, hidden = self.lstm(output, hidden)
         return output, hidden
 

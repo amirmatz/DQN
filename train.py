@@ -28,7 +28,7 @@ def train():
         # training actor
         for x, y in reader.read(config.TRAIN_BATCH_SIZE):
             for sentence, target_sentence in zip(x, y):
-                states, actions, probs = actor(sentence)
+                states, actions, probs = actor(sentence, get_possible_actions(lang, sentence))
                 predicted_sentence = [lang.index2word[action] for action in actions]
 
                 # todo think maybe about a better reward function
@@ -53,7 +53,7 @@ def train():
             if exp.next_state is not None:
                 with torch.no_grad():
                     embedding = actor.encoder.embedding
-                    q_s[idx] += config.GAMMA * max([critic(exp.next_state, action) for action in get_possible_actions(lang, exp.sentence, embedding)])
+                    q_s[idx] += config.GAMMA * max([critic(exp.next_state, embedding(action)) for action in get_possible_actions(lang, exp.sentence)])
 
         critic_optimizer.zero_grad()
         loss = critic_criterion(q_s, q_estimated)
@@ -78,9 +78,8 @@ def shared_loss(experience_buffer, q_estimated):
     return torch.div(torch.sum(torch.mul(probs, q_estimated)), config.TRAIN_BATCH_SIZE)
 
 
-def get_possible_actions(lang, sentence, embedding):
-    with torch.no_grad():
-        return (embedding(word) for word in itertools.chain(sentence, lang.get_actions()))
+def get_possible_actions(lang, sentence):
+    return itertools.chain(sentence, lang.get_actions())
 
 # todo
 # set encoding from word2vec
