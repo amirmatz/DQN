@@ -5,6 +5,26 @@ import config
 SOS_TOKEN_INDEX = 0
 EOS_TOKEN_INDEX = 1
 
+ACTIONS = list({
+    "if", "is", "are",
+    'number of', 'highest', 'largest', 'lowest', 'smallest', 'maximum', 'minimum',
+    'max', 'min', 'sum', 'total', 'average', 'avg', 'mean',
+    'for each',
+    "where",
+    'same as', 'higher than', 'larger than', 'smaller than', 'lower than',
+    'more', 'less', 'at least', 'at most', 'equal', 'is', 'are', 'was', 'contain',
+    'include', 'has', 'have', 'end with', 'start with', 'ends with',
+    'starts with', 'begin',
+    'highest', 'largest', 'most', 'smallest', 'lowest', 'smallest', 'least',
+    'longest', 'shortest', 'biggest',
+    "both", "and",
+    "besides",
+    'not in', 'sorted by', 'order by',
+    'ordered by',
+    'which', 'and', ',', 'sum', 'difference', 'multiplication', 'division'
+    # TODO: how to add #1,#2...
+})
+
 
 class Lang:
     def __init__(self, vocab: Iterable[str]):
@@ -26,7 +46,7 @@ class Lang:
             self.n_words += 1
 
     def get_actions(self):
-        pass  # todo add special tokens that can be viewed as actions
+        return ACTIONS
 
     def words(self):
         return (word for word in self.word2index.keys())
