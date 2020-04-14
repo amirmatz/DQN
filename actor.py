@@ -30,14 +30,20 @@ class Actor(nn.Module):
 
         states = [decoder_hidden]
         actions = []
-        allowed_actions_indices = [self.output_lang.index2word[act] for act in allowed_actions]
+
+        not_allowed_actions = torch.ones(self.output_lang.size(), 1)
+        not_allowed_actions[[self.output_lang.word2index[act] for act in allowed_actions]] = 0
+
         probs = []
 
         for di in range(config.MAX_LENGTH):
             decoder_output, decoder_hidden, decoder_attention = self.decoder(decoder_input, decoder_hidden, encoder_outputs)
             states.append(decoder_hidden)
             decoder_attentions[di] = decoder_attention.data
-            distribution = Categorical(logits=decoder_output.data)
+            distribution = decoder_output.data[:]
+            distribution[not_allowed_actions] = 0
+            distribution = Categorical(logits=distribution)
+
             action = distribution.sample().detach()
             probs.append(decoder_output.data[action])
             actions.append(action)
