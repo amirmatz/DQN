@@ -1,5 +1,7 @@
 import gzip
 import json
+from typing import Iterable
+
 import numpy as np
 
 
@@ -16,3 +18,6 @@ class Word2Vec:
             return self._d[item]
 
         raise NotImplementedError("What to do if not found?")  # TODO: implement
+
+    def get_vocab(self) -> Iterable[str]:
+        return self._d.keys()

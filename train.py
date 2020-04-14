@@ -9,13 +9,15 @@ from critic import Critic
 from dataset_reader import DataSetReader
 from language import Lang
 from reward import bleu_reward
+from vectorize_words import Word2Vec
 
 Experience = namedtuple('Experience', ['state', 'action', 'new_state', 'reward', 'probs', 'sentence'])
 
 
 def train():
     experiences_buffer = deque(maxlen=config.MAX_EXPERIENCES_SIZE)
-    lang = Lang()
+    word2vec = Word2Vec()
+    lang = Lang(word2vec.get_vocab())
     actor = Actor(config.EMBEDDING_SIZE, config.STATE_SIZE, lang)
     critic = Critic(config.STATE_SIZE, config.EMBEDDING_SIZE, config.CRITIC_HIDDEN_SIZE)
     reader = DataSetReader('train', lang)
