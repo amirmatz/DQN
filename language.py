@@ -9,8 +9,8 @@ EOS_TOKEN_INDEX = 1
 class Lang:
     def __init__(self, vocab: Iterable[str]):
         self.word2index = {}
-        self.index2word = {0: config.SOS_TOKEN, 1: config.EOS_TOKEN}
-        self.n_words = 2  # Count SOS and EOS
+        self.index2word = {0: config.SOS_TOKEN, 1: config.EOS_TOKEN, 2: config.UNKNOWN_TOKEN}
+        self.n_words = len(self.index2word)  # Count SOS and EOS and UNK
 
         for word in vocab:
             self.add_word(word)
