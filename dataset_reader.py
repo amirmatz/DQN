@@ -1,19 +1,26 @@
 import re
-from typing import Iterable, Tuple
+from typing import Iterable, Tuple, List
 
 import pandas as pd
 
 import config
 
 _mode_to_files = {
-    "train": [],  # TODO: insert desired input path
+    "train": ["train.csv"],  # TODO: insert desired input path
     "test": []
 }
 
 
-def wrap_sentences(sentences: Iterable[str]) -> Iterable[str]:
-    for sent in sentences:
-        yield f"{config.SOS_TOKEN} {sent} {config.EOS_TOKEN}"
+def wrap_sentence(sentence: str) -> List[str]:
+    return [config.SOS_TOKEN] + sentence.split() + [config.EOS_TOKEN]
+
+
+def batch(lst, batch_size):
+    output = []
+    for i in range(batch_size, len(lst) + batch_size - 1, batch_size):
+        output.append(lst[i - batch_size:batch_size])
+
+    return output
 
 
 def fix_references(string: str) -> str:
@@ -46,12 +53,15 @@ def _load_mode_df(mode) -> pd.DataFrame:
 
 class DataSetReader:
     def __init__(self, mode: str) -> None:
-        self._file_name = _load_mode_df(mode)
-        self._orig_df = pd.read_csv(self._file_name)
+        self._orig_df = _load_mode_df(mode)
 
-    def read(self, batch_size) -> Iterable[Tuple[str, str]]:
+    def read(self, batch_size) -> Iterable[Tuple[List[str], List[str]]]:
         sample = self._orig_df.sample(batch_size)
 
-        x = sample["question_text"]
-        y = sample["decomposition"].apply(process_target)
-        return zip(wrap_sentences(x), wrap_sentences(y))
+        x = sample["question_text"].apply(wrap_sentence)
+        y = sample["decomposition"].apply(process_target).apply(wrap_sentence)
+
+        return zip(
+            batch(x, batch_size),
+            batch(y, batch_size)
+        )

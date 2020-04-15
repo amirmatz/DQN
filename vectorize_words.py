@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Iterable, List
 
 import numpy as np
+import torch
 from gensim.models import Word2Vec
 from nltk import word_tokenize
 from tqdm import tqdm
@@ -22,7 +23,7 @@ def clean_word(word: str):
         return ""
 
     if not word[-1].isalpha():
-        word = word[:-2]
+        word = word[:-1]
     return word
 
 
@@ -63,7 +64,7 @@ class GoogleWord2Vec(BaseEmbedding):
 class LightWord2Vec(BaseEmbedding):
     def __init__(self, model: Word2Vec = None) -> None:
         if model is None:
-            self._model = LightWord2Vec(Word2Vec.load("train_embedding.model"))  # Default model
+            self._model = Word2Vec.load("word2vec_full.model")  # Default model
         else:
             self._model = model
 
@@ -73,10 +74,10 @@ class LightWord2Vec(BaseEmbedding):
         print("Calculating word embedding")
         return LightWord2Vec(Word2Vec(tqdm(sentences), min_count=1, workers=8))
 
-    def __getitem__(self, item: str) -> np.ndarray:
+    def __getitem__(self, item: str) -> torch.Tensor:
         item = clean_word(item)
         if item in self._model.wv:
-            return self._model.wv[item]
+            return torch.from_numpy(self._model.wv[item])
 
         raise ValueError(f"No embedding for {item}. Use `encode_sentence`")
 

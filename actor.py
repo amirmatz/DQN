@@ -38,7 +38,8 @@ class Actor(nn.Module):
         probs = []
 
         for di in range(config.MAX_LENGTH):
-            decoder_output, decoder_hidden, decoder_attention = self.decoder(decoder_input, decoder_hidden, encoder_outputs)
+            decoder_output, decoder_hidden, decoder_attention = self.decoder(decoder_input, decoder_hidden,
+                                                                             encoder_outputs)
             states.append(decoder_hidden)
             decoder_attentions[di] = decoder_attention.data
             distribution = decoder_output.data[:]
@@ -48,7 +49,7 @@ class Actor(nn.Module):
             action = distribution.sample().detach()
             probs.append(decoder_output.data[action])
             actions.append(action)
-            if action == EOS_TOKEN_INDEX: # if we finished the sequence
+            if action == EOS_TOKEN_INDEX:  # if we finished the sequence
                 break
 
             decoder_input = action
@@ -64,8 +65,8 @@ class EncoderRNN(nn.Module):
         self.hidden_size = hidden_size
         self.lstm = nn.LSTM(embedding_size, hidden_size)
 
-    def forward(self, input, hidden):
-        output, hidden = self.lstm(input, hidden)
+    def forward(self, input: torch.Tensor, hidden):
+        output, hidden = self.lstm(input.view(1,1,input.size(0)), hidden)
         return output, hidden
 
     def init_hidden(self):
@@ -107,6 +108,3 @@ class AttnDecoderRNN(nn.Module):
 
     def init_hidden(self):
         return torch.zeros(1, 1, self.hidden_size)
-
-
-
