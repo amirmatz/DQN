@@ -54,7 +54,7 @@ class GoogleWord2Vec(BaseEmbedding):
         if item in self._d:
             return self._d[item]
 
-        raise NotImplementedError("What to do if not found?")  # TODO: implement
+        raise NotImplementedError("Bug in design")
 
     def get_vocab(self) -> Iterable[str]:
         return self._d.keys()

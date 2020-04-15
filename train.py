@@ -20,7 +20,7 @@ def train():
     lang = Lang(word2vec.get_vocab())
     actor = Actor(config.EMBEDDING_SIZE, config.STATE_SIZE, lang, word2vec)
     critic = Critic(config.STATE_SIZE, config.EMBEDDING_SIZE, config.CRITIC_HIDDEN_SIZE)
-    reader = DataSetReader('train', lang)
+    reader = DataSetReader('train')
     critic_optimizer = torch.optim.Adam(critic.parameters())
     critic_criterion = torch.nn.MSELoss()
     actor_optimizer = torch.optim.Adam(actor.parameters())

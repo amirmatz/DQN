@@ -4,7 +4,6 @@ from typing import Iterable, Tuple
 import pandas as pd
 
 import config
-from language import Lang
 
 _mode_to_files = {
     "train": [],  # TODO: insert desired input path
@@ -46,10 +45,9 @@ def _load_mode_df(mode) -> pd.DataFrame:
 
 
 class DataSetReader:
-    def __init__(self, mode: str, lang: Lang) -> None:
+    def __init__(self, mode: str) -> None:
         self._file_name = _load_mode_df(mode)
         self._orig_df = pd.read_csv(self._file_name)
-        # TODO: run lang on input?
 
     def read(self, batch_size) -> Iterable[Tuple[str, str]]:
         sample = self._orig_df.sample(batch_size)

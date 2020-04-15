@@ -21,8 +21,8 @@ ACTIONS = list({
     "besides",
     'not in', 'sorted by', 'order by',
     'ordered by',
-    'which', 'and', ',', 'sum', 'difference', 'multiplication', 'division'
-    # TODO: how to add #1,#2...
+    'which', 'and', ',', 'sum', 'difference', 'multiplication', 'division',
+    '#1', '#2', '#3', '#4', '#5', '#6', '#7', '#8', '#9', '#10'
 })
 
 
