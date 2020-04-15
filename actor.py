@@ -10,6 +10,7 @@ from language import SOS_TOKEN_INDEX, EOS_TOKEN_INDEX
 class Actor(nn.Module):
 
     def __init__(self, embedding_size, hidden_size, output_lang, embedding):
+        super(Actor, self).__init__()
         self.encoder = EncoderRNN(embedding_size, hidden_size)
         self.decoder = AttnDecoderRNN(hidden_size, output_lang.size())
         self.output_lang = output_lang
