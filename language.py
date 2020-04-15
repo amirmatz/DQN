@@ -5,7 +5,7 @@ import config
 SOS_TOKEN_INDEX = 0
 EOS_TOKEN_INDEX = 1
 
-ACTIONS = list({
+ACTIONS = list(word for sent in {
     "if", "is", "are",
     'number of', 'highest', 'largest', 'lowest', 'smallest', 'maximum', 'minimum',
     'max', 'min', 'sum', 'total', 'average', 'avg', 'mean',
@@ -22,18 +22,20 @@ ACTIONS = list({
     'not in', 'sorted by', 'order by',
     'ordered by',
     'which', 'and', ',', 'sum', 'difference', 'multiplication', 'division',
-    '#1', '#2', '#3', '#4', '#5', '#6', '#7', '#8', '#9', '#10'
-})
+    #'#1', '#2', '#3', '#4', '#5', '#6', '#7', '#8', '#9', '#10' TODO fix encoder on this
+} for word in sent.split())
 
 
 class Lang:
     def __init__(self, vocab: Iterable[str]):
         self.word2index = {}
-        self.index2word = {0: config.SOS_TOKEN, 1: config.EOS_TOKEN, 2: config.UNKNOWN_TOKEN}
-        self.n_words = len(self.index2word)  # Count SOS and EOS and UNK
-
+        self.index2word = {0: config.SOS_TOKEN, 1: config.EOS_TOKEN}
         for word in vocab:
             self.add_word(word)
+
+    @property
+    def n_words(self):
+        return len(self.index2word)
 
     def add_sentence(self, sentence):
         for word in sentence.split(' '):
@@ -43,7 +45,6 @@ class Lang:
         if word not in self.word2index:
             self.word2index[word] = self.n_words
             self.index2word[self.n_words] = word
-            self.n_words += 1
 
     def get_actions(self):
         return ACTIONS

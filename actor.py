@@ -17,7 +17,7 @@ class Actor(nn.Module):
         self.embedding = embedding
 
     def forward(self, x, allowed_actions):
-        encoder_hidden = self.encoder.init_hidden()
+        encoder_hidden = None
         input_length = len(x)
         encoder_outputs = torch.zeros(config.MAX_LENGTH, self.encoder.hidden_size)
 
@@ -63,13 +63,13 @@ class EncoderRNN(nn.Module):
     def __init__(self, embedding_size, hidden_size):
         super(EncoderRNN, self).__init__()
         self.hidden_size = hidden_size
-        self.lstm = nn.LSTM(embedding_size, hidden_size)
+        self.lstm = nn.LSTM(embedding_size, hidden_size, num_layers=1)
 
     def forward(self, input: torch.Tensor, hidden):
-        output, hidden = self.lstm(input.view(1,1,input.size(0)), hidden)
+        output, hidden = self.lstm(input.view(1, 1, input.size(0)), hidden)
         return output, hidden
 
-    def init_hidden(self):
+    def init_hidden(self):  # TODO: I think we can delete this
         return torch.zeros(1, 1, self.hidden_size)
 
 
