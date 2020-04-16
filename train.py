@@ -11,7 +11,7 @@ from language import Lang
 from reward import bleu_reward
 from vectorize_words import LightWord2Vec
 
-Experience = namedtuple('Experience', ['state', 'action', 'new_state', 'reward', 'probs', 'sentence'])
+Experience = namedtuple('Experience', ['state', 'action', 'next_state', 'reward', 'probs', 'sentence'])
 
 
 def train():
@@ -37,14 +37,10 @@ def train():
                 rewards = [bleu_reward(target_sentence[:i + 1], predicted_sentence[:i + 1]) for i in
                            range(max(len(target_sentence), len(predicted_sentence)))] + [0]
 
-                for i in range(len(states)):
-                    if i == len(states) - 1:
-                        experiences_buffer.insert(0, Experience(states[i], actions[i], None, rewards[i], probs[i],
-                                                                sentence))
-                    else:
-                        experiences_buffer.insert(0,
-                                                  Experience(states[i], actions[i], states[i + 1], rewards[i], probs[i],
-                                                             sentence))
+                for i in range(len(states) - 1):
+                    experiences_buffer.insert(0,
+                                              Experience(states[i], actions[i], states[i + 1], rewards[i], probs[i],
+                                                         sentence))
 
         q_estimated = torch.zeros(config.Q_BATCH_SIZE, 1)
         q_s = torch.zeros(config.Q_BATCH_SIZE, 1)
@@ -59,8 +55,8 @@ def train():
             q_s[idx] = exp.reward
             if exp.next_state is not None:
                 with torch.no_grad():
-                    q_s[idx] += config.GAMMA * max([critic(exp.next_state, word2vec(action)) for action in
-                                                    get_possible_actions(lang, exp.sentence)])
+                    q_s[idx] += (config.GAMMA * max([critic(exp.next_state, word2vec[action]) for action in
+                                                    get_possible_actions(lang, exp.sentence)]))[0][0]
 
         critic_optimizer.zero_grad()
         loss = critic_criterion(q_s, q_estimated)
