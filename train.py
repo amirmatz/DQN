@@ -54,7 +54,8 @@ def train():
 
         for idx in range(exp_length):
             exp = experiences_buffer[random.randint(0, exp_length)]
-            q_estimated[idx] = critic(exp.state, exp.action)
+            action_emb = word2vec[lang.index2word[int(exp.action)]]
+            q_estimated[idx] = critic(exp.state, action_emb)
             q_s[idx] = exp.reward
             if exp.next_state is not None:
                 with torch.no_grad():

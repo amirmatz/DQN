@@ -29,7 +29,7 @@ class Actor(nn.Module):
         decoder_hidden = encoder_hidden
         decoder_attentions = torch.zeros(config.MAX_LENGTH, config.MAX_LENGTH)
 
-        states = [decoder_hidden]
+        states = [decoder_hidden[0]]
         actions = []
 
         not_allowed_actions = np.ones(self.output_lang.size())
@@ -40,7 +40,7 @@ class Actor(nn.Module):
         for di in range(config.MAX_LENGTH):
             decoder_output, decoder_hidden, decoder_attention = self.decoder(decoder_input, decoder_hidden,
                                                                              encoder_outputs)
-            states.append(decoder_hidden)
+            states.append(decoder_hidden[0]) # Adding h_i
             decoder_attentions[di] = decoder_attention.data
             distribution = decoder_output.data[:]
             distribution[0][not_allowed_actions] = 0
