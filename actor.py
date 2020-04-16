@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Categorical
-
+import numpy as np
 import config
 from language import SOS_TOKEN_INDEX, EOS_TOKEN_INDEX
 
@@ -32,8 +32,8 @@ class Actor(nn.Module):
         states = [decoder_hidden]
         actions = []
 
-        not_allowed_actions = torch.ones(self.output_lang.size(), 1)
-        not_allowed_actions[[self.output_lang.word2index[act] for act in allowed_actions]] = 0
+        not_allowed_actions = np.ones(self.output_lang.size())
+        not_allowed_actions[[self.output_lang.word_to_index(act) for act in allowed_actions]] = 0
 
         probs = []
 
@@ -43,11 +43,11 @@ class Actor(nn.Module):
             states.append(decoder_hidden)
             decoder_attentions[di] = decoder_attention.data
             distribution = decoder_output.data[:]
-            distribution[not_allowed_actions] = 0
+            distribution[0][not_allowed_actions] = 0
             distribution = Categorical(logits=distribution)
 
             action = distribution.sample().detach()
-            probs.append(decoder_output.data[action])
+            probs.append(decoder_output.data[0][action])
             actions.append(action)
             if action == EOS_TOKEN_INDEX:  # if we finished the sequence
                 break
@@ -89,15 +89,17 @@ class AttnDecoderRNN(nn.Module):
         self.out = nn.Linear(self.hidden_size, self.output_size)
 
     def forward(self, input, hidden, encoder_outputs):
-        embedded = self.embedding(input).view(1, 1, -1)
+        embedded = self.embedding(input).view(1,1,1, -1)
         embedded = self.dropout(embedded)
 
-        attn_weights = F.softmax(
-            self.attn(torch.cat((embedded[0], hidden[0]), 1)), dim=1)
-        attn_applied = torch.bmm(attn_weights.unsqueeze(0),
+        a = torch.cat((embedded[0], hidden[0]), 1).reshape(1,1,-1)
+        b = self.attn(a)
+        attn_weights = F.softmax(b, dim=1)
+
+        attn_applied = torch.bmm(attn_weights.unsqueeze(0).view(1,1,-1),
                                  encoder_outputs.unsqueeze(0))
 
-        output = torch.cat((embedded[0], attn_applied[0]), 1)
+        output = torch.cat((embedded[0].view(1,-1), attn_applied[0]), 1)
         output = self.attn_combine(output).unsqueeze(0)
 
         output = F.relu(output)

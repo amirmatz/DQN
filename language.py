@@ -22,29 +22,49 @@ ACTIONS = list(word for sent in {
     'not in', 'sorted by', 'order by',
     'ordered by',
     'which', 'and', ',', 'sum', 'difference', 'multiplication', 'division',
-    #'#1', '#2', '#3', '#4', '#5', '#6', '#7', '#8', '#9', '#10' TODO fix encoder on this
+     '#1', '#2', '#3', '#4', '#5', '#6', '#7', '#8', '#9', '#10'
 } for word in sent.split())
+
+
+def canonize(word: str) -> str:
+    return "".join([c for c in word.lower() if c.isalpha() or c.isdigit()])
 
 
 class Lang:
     def __init__(self, vocab: Iterable[str]):
         self.word2index = {}
         self.index2word = {0: config.SOS_TOKEN, 1: config.EOS_TOKEN}
+        for word in self.get_actions():
+            self.add_sentence(word)
+        with open("vocab.txt") as f:
+            for line in f.readlines():
+                self.add_sentence(line)
         for word in vocab:
-            self.add_word(word)
+            self.add_sentence(word)
 
     @property
     def n_words(self):
         return len(self.index2word)
 
     def add_sentence(self, sentence):
-        for word in sentence.split(' '):
-            self.add_word(word)
+        for sub_sent in sentence.split():
+            for word in sub_sent.split("-"):
+                self.add_word(word)
 
     def add_word(self, word):
         if word not in self.word2index:
             self.word2index[word] = self.n_words
-            self.index2word[self.n_words] = word
+            self.index2word[self.n_words] = word.lower()
+
+    def word_to_index(self, word):
+        if word in self.word2index:
+            return self.word2index[word]
+
+        canonized_word = canonize(word)
+        if canonized_word == "":
+            raise ValueError(word)
+
+        return self.word2index[canonized_word]
 
     def get_actions(self):
         return ACTIONS

@@ -4,8 +4,9 @@ from typing import Iterable, Tuple, List
 import pandas as pd
 
 import config
-from vectorize_words import clean_word
+import re
 
+splitter = re.compile("[ \-]")
 _mode_to_files = {
     "train": ["train.csv"],  # TODO: insert desired input path
     "test": []
@@ -13,9 +14,9 @@ _mode_to_files = {
 
 
 def wrap_sentence(sentence: str) -> List[str]:
-    sentence = [clean_word(word) for word in sentence.split()]
-    sentence = [word for word in sentence if any(word)]
-    return [config.SOS_TOKEN] + sentence + [config.EOS_TOKEN]
+    # sentence = [clean_word(word) for word in sentence.split()]
+    # sentence = [word for word in sentence if any(word)]
+    return [config.SOS_TOKEN] + splitter.split(sentence) + [config.EOS_TOKEN]
 
 
 def batch(lst, batch_size):

@@ -31,16 +31,20 @@ def train():
         for x, y in reader.read(config.TRAIN_BATCH_SIZE):
             for sentence, target_sentence in zip(x, y):
                 states, actions, probs = actor(sentence, get_possible_actions(lang, sentence))
-                predicted_sentence = [lang.index2word[action] for action in actions]
+                predicted_sentence = [lang.index2word[int(action)] for action in actions[:-1]]  # Skip None
 
                 # todo think maybe about a better reward function
-                rewards = [bleu_reward(target_sentence[:i+1], predicted_sentence[:i+1]) for i in range(max(len(target_sentence),len(predicted_sentence)))]
+                rewards = [bleu_reward(target_sentence[:i + 1], predicted_sentence[:i + 1]) for i in
+                           range(max(len(target_sentence), len(predicted_sentence)))] + [0]
 
-                for i in range(len(sentence)):
-                    if i == len(sentence) - 1:
-                        experiences_buffer.insert(0, Experience(states[i], actions[i], None, rewards[i], probs[i], sentence))
+                for i in range(len(states)):
+                    if i == len(states) - 1:
+                        experiences_buffer.insert(0, Experience(states[i], actions[i], None, rewards[i], probs[i],
+                                                                sentence))
                     else:
-                        experiences_buffer.insert(0, Experience(states[i], actions[i], states[i+1], rewards[i], probs[i], sentence))
+                        experiences_buffer.insert(0,
+                                                  Experience(states[i], actions[i], states[i + 1], rewards[i], probs[i],
+                                                             sentence))
 
         q_estimated = torch.zeros(config.Q_BATCH_SIZE, 1)
         q_s = torch.zeros(config.Q_BATCH_SIZE, 1)
@@ -49,18 +53,18 @@ def train():
         exp_length = min(len(experiences_buffer), config.Q_BATCH_SIZE)
 
         for idx in range(exp_length):
-            exp = experiences_buffer[random.randint(exp_length)]
+            exp = experiences_buffer[random.randint(0, exp_length)]
             q_estimated[idx] = critic(exp.state, exp.action)
             q_s[idx] = exp.reward
             if exp.next_state is not None:
                 with torch.no_grad():
-                    q_s[idx] += config.GAMMA * max([critic(exp.next_state, word2vec(action)) for action in get_possible_actions(lang, exp.sentence)])
+                    q_s[idx] += config.GAMMA * max([critic(exp.next_state, word2vec(action)) for action in
+                                                    get_possible_actions(lang, exp.sentence)])
 
         critic_optimizer.zero_grad()
         loss = critic_criterion(q_s, q_estimated)
         loss.backward()
         critic_optimizer.step()
-
 
         # updating seq2seq model
         actor_optimizer.zero_grad()
@@ -81,6 +85,7 @@ def shared_loss(experience_buffer, q_estimated):
 
 def get_possible_actions(lang, sentence):
     return itertools.chain(sentence, lang.get_actions())
+
 
 # todo
 # set encoding from word2vec
