@@ -4,7 +4,6 @@ from typing import Iterable, Tuple, List
 import pandas as pd
 
 import config
-import re
 
 splitter = re.compile("[ \-]")
 _mode_to_files = {
@@ -16,7 +15,8 @@ _mode_to_files = {
 def wrap_sentence(sentence: str) -> List[str]:
     # sentence = [clean_word(word) for word in sentence.split()]
     # sentence = [word for word in sentence if any(word)]
-    return [config.SOS_TOKEN] + splitter.split(sentence) + [config.EOS_TOKEN]
+    # TODO: removing all words without letter or chars. seems right but reconsider
+    return [config.SOS_TOKEN] + [w for w in splitter.split(sentence) if w.isalpha() or w.isdigit()] + [config.EOS_TOKEN]
 
 
 def batch(lst, batch_size):

@@ -1,9 +1,11 @@
+from collections import defaultdict
 from typing import Iterable
 
 import config
 
 SOS_TOKEN_INDEX = 0
 EOS_TOKEN_INDEX = 1
+UNK_TOKEN_INDEX = 2
 
 ACTIONS = list(word for sent in {
     "if", "is", "are",
@@ -22,7 +24,7 @@ ACTIONS = list(word for sent in {
     'not in', 'sorted by', 'order by',
     'ordered by',
     'which', 'and', ',', 'sum', 'difference', 'multiplication', 'division',
-     '#1', '#2', '#3', '#4', '#5', '#6', '#7', '#8', '#9', '#10'
+    '#1', '#2', '#3', '#4', '#5', '#6', '#7', '#8', '#9', '#10'
 } for word in sent.split())
 
 
@@ -32,8 +34,8 @@ def canonize(word: str) -> str:
 
 class Lang:
     def __init__(self, vocab: Iterable[str]):
-        self.word2index = {}
-        self.index2word = {0: config.SOS_TOKEN, 1: config.EOS_TOKEN}
+        self.word2index = defaultdict(lambda: UNK_TOKEN_INDEX)  # TODO: rethink, a bit extreme
+        self.index2word = {0: config.SOS_TOKEN, 1: config.EOS_TOKEN, 2: config.UNK_TOKEN}
         for word in self.get_actions():
             self.add_sentence(word)
         with open("vocab.txt") as f:
