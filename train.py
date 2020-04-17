@@ -1,6 +1,8 @@
 from collections import deque, namedtuple
 import itertools
 import random
+from typing import Deque
+
 import torch
 
 import config
@@ -11,7 +13,7 @@ from language import Lang
 from reward import bleu_reward
 from vectorize_words import LightWord2Vec
 
-Experience = namedtuple('Experience', ['state', 'action', 'new_state', 'reward', 'probs', 'sentence'])
+Experience = namedtuple('Experience', ['state', 'action', 'next_state', 'reward', 'probs', 'sentence'])
 
 
 def train():
@@ -37,14 +39,10 @@ def train():
                 rewards = [bleu_reward(target_sentence[:i + 1], predicted_sentence[:i + 1]) for i in
                            range(max(len(target_sentence), len(predicted_sentence)))] + [0]
 
-                for i in range(len(states)):
-                    if i == len(states) - 1:
-                        experiences_buffer.insert(0, Experience(states[i], actions[i], None, rewards[i], probs[i],
-                                                                sentence))
-                    else:
-                        experiences_buffer.insert(0,
-                                                  Experience(states[i], actions[i], states[i + 1], rewards[i], probs[i],
-                                                             sentence))
+                for i in range(len(states) - 1):
+                    experiences_buffer.insert(0,
+                                              Experience(states[i], actions[i], states[i + 1], rewards[i], probs[i],
+                                                         sentence))
 
         q_estimated = torch.zeros(config.Q_BATCH_SIZE, 1)
         q_s = torch.zeros(config.Q_BATCH_SIZE, 1)
@@ -53,13 +51,14 @@ def train():
         exp_length = min(len(experiences_buffer), config.Q_BATCH_SIZE)
 
         for idx in range(exp_length):
-            exp = experiences_buffer[random.randint(0, exp_length)]
-            q_estimated[idx] = critic(exp.state, exp.action)
+            exp = experiences_buffer[random.randint(0, exp_length - 1)]
+            action_emb = word2vec[lang.index2word[int(exp.action)]]
+            q_estimated[idx] = critic(exp.state, action_emb)
             q_s[idx] = exp.reward
             if exp.next_state is not None:
                 with torch.no_grad():
-                    q_s[idx] += config.GAMMA * max([critic(exp.next_state, word2vec(action)) for action in
-                                                    get_possible_actions(lang, exp.sentence)])
+                    q_s[idx] += (config.GAMMA * max([critic(exp.next_state, word2vec[action]) for action in
+                                                     get_possible_actions(lang, exp.sentence)]))[0][0]
 
         critic_optimizer.zero_grad()
         loss = critic_criterion(q_s, q_estimated)
@@ -68,19 +67,19 @@ def train():
 
         # updating seq2seq model
         actor_optimizer.zero_grad()
-        loss = shared_loss(experiences_buffer, q_estimated)
+        loss = shared_loss(experiences_buffer, q_estimated[:exp_length])
         loss.backward()
         actor_optimizer.step()
 
         experiences_buffer.clear()
 
 
-def shared_loss(experience_buffer, q_estimated):
-    probs = torch.zeros(len(experience_buffer), 1, dtype=torch.float64)
-    for i in range(len(experience_buffer)):
-        probs[i] = experience_buffer[i].probs
+def shared_loss(experience_buffer: Deque[Experience], q_estimated: torch.Tensor) -> torch.Tensor:
+    probs = torch.FloatTensor([exp.probs for exp in experience_buffer])
+    probs.requires_grad_(True)
+    log_probs = torch.log(probs)
 
-    return torch.div(torch.sum(torch.mul(probs, q_estimated)), config.TRAIN_BATCH_SIZE)
+    return torch.div(torch.sum(torch.mul(log_probs, q_estimated)), config.TRAIN_BATCH_SIZE)
 
 
 def get_possible_actions(lang, sentence):

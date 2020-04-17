@@ -29,7 +29,7 @@ class Actor(nn.Module):
         decoder_hidden = encoder_hidden
         decoder_attentions = torch.zeros(config.MAX_LENGTH, config.MAX_LENGTH)
 
-        states = [decoder_hidden]
+        states = [decoder_hidden[0]]
         actions = []
 
         not_allowed_actions = np.ones(self.output_lang.size())
@@ -40,7 +40,7 @@ class Actor(nn.Module):
         for di in range(config.MAX_LENGTH):
             decoder_output, decoder_hidden, decoder_attention = self.decoder(decoder_input, decoder_hidden,
                                                                              encoder_outputs)
-            states.append(decoder_hidden)
+            states.append(decoder_hidden[0])  # Adding h_i
             decoder_attentions[di] = decoder_attention.data
             distribution = decoder_output.data[:]
             distribution[0][not_allowed_actions] = 0
@@ -54,8 +54,6 @@ class Actor(nn.Module):
 
             decoder_input = action
 
-        actions.append(None)  # last state is terminal and so does not have an action
-        probs.append(0)
         return states, actions, probs
 
 
@@ -89,17 +87,17 @@ class AttnDecoderRNN(nn.Module):
         self.out = nn.Linear(self.hidden_size, self.output_size)
 
     def forward(self, input, hidden, encoder_outputs):
-        embedded = self.embedding(input).view(1,1,1, -1)
+        embedded = self.embedding(input).view(1, 1, 1, -1)
         embedded = self.dropout(embedded)
 
-        a = torch.cat((embedded[0], hidden[0]), 1).reshape(1,1,-1)
+        a = torch.cat((embedded[0], hidden[0]), 1).reshape(1, 1, -1)
         b = self.attn(a)
         attn_weights = F.softmax(b, dim=1)
 
-        attn_applied = torch.bmm(attn_weights.unsqueeze(0).view(1,1,-1),
+        attn_applied = torch.bmm(attn_weights.unsqueeze(0).view(1, 1, -1),
                                  encoder_outputs.unsqueeze(0))
 
-        output = torch.cat((embedded[0].view(1,-1), attn_applied[0]), 1)
+        output = torch.cat((embedded[0].view(1, -1), attn_applied[0]), 1)
         output = self.attn_combine(output).unsqueeze(0)
 
         output = F.relu(output)

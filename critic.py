@@ -8,13 +8,16 @@ class Critic(torch.nn.Module):
         super(Critic, self).__init__()
         self.fc1 = torch.nn.Linear(state_size, hidden_size)
         self.fc2 = torch.nn.Linear(action_size, hidden_size)
-        self.fc3 = torch.nn.Linear(2*hidden_size, 1)
+        self.fc3 = torch.nn.Linear(2 * hidden_size, 1)
 
     def forward(self, state, action):
-        state_out = torch.nn.functional.relu(self.fc1(state))
-        action_out = torch.nn.functional.relu(self.fc2(action))
-        out = torch.nn.functional.relu(torch.cat((state_out, action_out)))
-        out = self.fc3(out)
+        fc1 = self.fc1(state)
+        state_out = torch.nn.functional.relu(fc1)
+
+        fc2 = self.fc2(action)
+        action_out = torch.nn.functional.relu(fc2)
+
+        t = torch.cat((state_out, action_out.view(1, 1, -1)))
+        out = torch.nn.functional.relu(t)
+        out = self.fc3(out.view(1,1,-1))
         return out
-
-
