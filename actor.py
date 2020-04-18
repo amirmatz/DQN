@@ -44,7 +44,7 @@ class Actor(nn.Module):
             decoder_attentions[di] = decoder_attention.data
             distribution = decoder_output.data[:]
             distribution[0][not_allowed_actions] = 0
-            distribution = Categorical(logits=distribution)
+            distribution = Categorical(probs=distribution)
 
             action = distribution.sample().detach()
             probs.append(decoder_output.data[0][action])
@@ -103,7 +103,7 @@ class AttnDecoderRNN(nn.Module):
         output = F.relu(output)
         output, hidden = self.lstm(output, hidden)
 
-        output = F.log_softmax(self.out(output[0]), dim=1)
+        output = F.softmax(self.out(output[0]), dim=1)
         return output, hidden, attn_weights
 
     def init_hidden(self):

@@ -16,7 +16,8 @@ def wrap_sentence(sentence: str) -> List[str]:
     # sentence = [clean_word(word) for word in sentence.split()]
     # sentence = [word for word in sentence if any(word)]
     # TODO: removing all words without letter or chars. seems right but reconsider
-    return [config.SOS_TOKEN] + [w for w in splitter.split(sentence) if w.isalpha() or w.isdigit()] + [config.EOS_TOKEN]
+    return [config.SOS_TOKEN] + [w for w in splitter.split(sentence) if
+                                 w.isalpha() or w.isdigit() or w.isupper() or w in ["#", "@"]] + [config.EOS_TOKEN]
 
 
 def batch(lst, batch_size):

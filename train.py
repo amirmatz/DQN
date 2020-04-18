@@ -1,3 +1,4 @@
+import pickle
 from collections import deque, namedtuple
 import itertools
 import random
@@ -27,8 +28,7 @@ def train():
     critic_criterion = torch.nn.MSELoss()
     actor_optimizer = torch.optim.Adam(actor.parameters())
 
-    for _ in range(config.EPOCHS):
-
+    for epoch in range(config.EPOCHS):
         # training actor
         for x, y in reader.read(config.TRAIN_BATCH_SIZE):
             for sentence, target_sentence in zip(x, y):
@@ -62,7 +62,7 @@ def train():
 
         critic_optimizer.zero_grad()
         loss = critic_criterion(q_s, q_estimated)
-        loss.backward()
+        loss.backward(retain_graph=True)
         critic_optimizer.step()
 
         # updating seq2seq model
@@ -73,13 +73,19 @@ def train():
 
         experiences_buffer.clear()
 
+        print("Finished epoch:", epoch, " loss is ", torch.sum(loss))
+        if epoch % 10 == 0:
+            with open(f"pickles/epoch_{epoch}.pkl", "wb") as f:
+                pickle.dump((actor.encoder, actor.decoder,lang.index2word, critic, critic_optimizer, critic_criterion, actor_optimizer),
+                            f)
+
 
 def shared_loss(experience_buffer: Deque[Experience], q_estimated: torch.Tensor) -> torch.Tensor:
     probs = torch.FloatTensor([exp.probs for exp in experience_buffer])
     probs.requires_grad_(True)
     log_probs = torch.log(probs)
 
-    return torch.div(torch.sum(torch.mul(log_probs, q_estimated)), config.TRAIN_BATCH_SIZE)
+    return torch.div(torch.sum(torch.mul(log_probs, q_estimated)), -config.TRAIN_BATCH_SIZE)
 
 
 def get_possible_actions(lang, sentence):
