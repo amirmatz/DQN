@@ -44,7 +44,7 @@ def train():
                                               Experience(states[i], actions[i], states[i + 1], rewards[i], probs[i],
                                                          sentence))
 
-        q_estimated = torch.zeros(config.Q_BATCH_SIZE, 1)
+        q_estimated = []
         q_s = torch.zeros(config.Q_BATCH_SIZE, 1)
 
         # training q function
@@ -53,12 +53,15 @@ def train():
         for idx in range(exp_length):
             exp = experiences_buffer[random.randint(0, exp_length - 1)]
             action_emb = word2vec[lang.index2word[int(exp.action)]]
-            q_estimated[idx] = critic(exp.state, action_emb)
+            q_estimated.append(critic(exp.state, action_emb)[0, 0])
             q_s[idx] = exp.reward
             if exp.next_state is not None:
                 with torch.no_grad():
                     q_s[idx] += (config.GAMMA * max([critic(exp.next_state, word2vec[action]) for action in
                                                      get_possible_actions(lang, exp.sentence)]))[0][0]
+
+        q_estimated = torch.cat(q_estimated).view(-1, 1)
+        q_estimated = q_estimated[:config.Q_BATCH_SIZE]
 
         critic_optimizer.zero_grad()
         loss = critic_criterion(q_s, q_estimated)
@@ -72,20 +75,23 @@ def train():
         actor_optimizer.step()
 
         experiences_buffer.clear()
+        with torch.no_grad():
+            actor.zero_grad()
+            critic.zero_grad()
 
         print("Finished epoch:", epoch, " loss is ", torch.sum(loss))
         if epoch % 10 == 0:
             with open(f"pickles/epoch_{epoch}.pkl", "wb") as f:
-                pickle.dump((actor.encoder, actor.decoder,lang.index2word, critic, critic_optimizer, critic_criterion, actor_optimizer),
+                pickle.dump((actor.encoder, actor.decoder, lang.index2word, critic, critic_optimizer, critic_criterion,
+                             actor_optimizer),
                             f)
 
 
 def shared_loss(experience_buffer: Deque[Experience], q_estimated: torch.Tensor) -> torch.Tensor:
     probs = torch.FloatTensor([exp.probs for exp in experience_buffer])
-    probs.requires_grad_(True)
     log_probs = torch.log(probs)
 
-    return torch.div(torch.sum(torch.mul(log_probs, q_estimated)), -config.TRAIN_BATCH_SIZE)
+    return torch.div(torch.sum(torch.mul(log_probs, q_estimated)), config.TRAIN_BATCH_SIZE)
 
 
 def get_possible_actions(lang, sentence):

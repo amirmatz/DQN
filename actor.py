@@ -41,13 +41,13 @@ class Actor(nn.Module):
             decoder_output, decoder_hidden, decoder_attention = self.decoder(decoder_input, decoder_hidden,
                                                                              encoder_outputs)
             states.append(decoder_hidden[0])  # Adding h_i
-            decoder_attentions[di] = decoder_attention.data
-            distribution = decoder_output.data[:]
+            decoder_attentions[di] = decoder_attention
+            distribution = decoder_output[:]
             distribution[0][not_allowed_actions] = 0
             distribution = Categorical(probs=distribution)
 
             action = distribution.sample().detach()
-            probs.append(decoder_output.data[0][action])
+            probs.append(decoder_output[0][action])
             actions.append(action)
             if action == EOS_TOKEN_INDEX:  # if we finished the sequence
                 break
@@ -66,9 +66,6 @@ class EncoderRNN(nn.Module):
     def forward(self, input: torch.Tensor, hidden):
         output, hidden = self.lstm(input.view(1, 1, input.size(0)), hidden)
         return output, hidden
-
-    def init_hidden(self):  # TODO: I think we can delete this
-        return torch.zeros(1, 1, self.hidden_size)
 
 
 class AttnDecoderRNN(nn.Module):
@@ -105,6 +102,3 @@ class AttnDecoderRNN(nn.Module):
 
         output = F.softmax(self.out(output[0]), dim=1)
         return output, hidden, attn_weights
-
-    def init_hidden(self):
-        return torch.zeros(1, 1, self.hidden_size)
