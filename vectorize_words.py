@@ -22,13 +22,14 @@ class BaseEmbedding(ABC):
 
 class LightWord2Vec(BaseEmbedding):
     def __init__(self, model=None) -> None:
+        self._device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         if model is None:
             self._model = fasttext.load_model("fast_text.bin")  # Default model
         else:
             self._model = model
 
     def __getitem__(self, item: str) -> torch.Tensor:
-        return torch.from_numpy(self._model[item])
+        return torch.from_numpy(self._model[item]).float().to(self._device)
 
     def __contains__(self, item: str) -> bool:
         return item in self._model
