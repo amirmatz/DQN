@@ -11,7 +11,7 @@ word2vec = LightWord2Vec()
 lang = Lang(word2vec.get_vocab())
 actor = Actor(config.EMBEDDING_SIZE, config.STATE_SIZE, lang, word2vec)
 
-with open(f"pickles/epoch_550.pkl", "rb") as f:
+with open(f"pickles/epoch_810.pkl", "rb") as f:
     actor.encoder, actor.decoder, lang.index2word, critic, critic_optimizer, critic_criterion, actor_optimizer = pickle.load(
         f)
 

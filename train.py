@@ -15,6 +15,10 @@ from reward import bleu_reward
 from vectorize_words import LightWord2Vec
 
 Experience = namedtuple('Experience', ['state', 'action', 'next_state', 'reward', 'probs', 'sentence'])
+if torch.cuda.is_available():
+    torch.set_default_tensor_type('torch.cuda.FloatTensor')
+
+LOAD_INDEX = 700
 
 
 def train():
@@ -28,7 +32,16 @@ def train():
     critic_criterion = torch.nn.MSELoss()
     actor_optimizer = torch.optim.Adam(actor.parameters())
 
-    for epoch in range(config.EPOCHS):
+    if LOAD_INDEX > -1:
+        with open(f"pickles/epoch_{LOAD_INDEX}.pkl", "rb") as f:
+            actor.encoder, actor.decoder, lang.index2word, \
+            critic, critic_optimizer, critic_criterion, actor_optimizer = pickle.load(f)
+
+    if torch.cuda.is_available():
+        actor.cuda()
+        critic.cuda()
+
+    for epoch in range(LOAD_INDEX + 1, config.EPOCHS):
         # training actor
         for x, y in reader.read(config.TRAIN_BATCH_SIZE):
             for sentence, target_sentence in zip(x, y):
@@ -80,15 +93,16 @@ def train():
             critic.zero_grad()
 
         print("Finished epoch:", epoch, " loss is ", torch.sum(loss))
-        if epoch % 10 == 0:
+        if epoch % 100 == 0:
             with open(f"pickles/epoch_{epoch}.pkl", "wb") as f:
                 pickle.dump((actor.encoder, actor.decoder, lang.index2word, critic, critic_optimizer, critic_criterion,
                              actor_optimizer),
                             f)
 
 
+#
 def shared_loss(experience_buffer: Deque[Experience], q_estimated: torch.Tensor) -> torch.Tensor:
-    probs = torch.FloatTensor([exp.probs for exp in experience_buffer])
+    probs = torch.Tensor([exp.probs for exp in experience_buffer])
     log_probs = torch.log(probs)
 
     return torch.div(torch.sum(torch.mul(log_probs, q_estimated)), config.TRAIN_BATCH_SIZE)
