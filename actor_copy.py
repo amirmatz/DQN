@@ -24,13 +24,13 @@ class ActorCopy(nn.Module):
             encoder_output, encoder_hidden = self.encoder(self.embedding[x[ei]], encoder_hidden)
             encoder_outputs[ei] += encoder_output[0, 0]
 
-        decoder_input = self.embedding(config.SOS_TOKEN)  # SOS
+        decoder_input = self.embedding[config.SOS_TOKEN]  # SOS
         decoder_hidden = encoder_hidden
 
-        states = [decoder_hidden]
+        states = [decoder_hidden[0]]
         actions = []
 
-        not_allowed_actions = np.ones(self.output_lang.size()+len(actions))
+        not_allowed_actions = np.ones(self.output_lang.size()+len(actions)) # TODO: CR you set actions to [] on the line before
         not_allowed_actions[[self.output_lang.word_to_index(act) for act in allowed_actions]] = 0
         not_allowed_actions[self.output_lang.size():self.output_lang.size()+len(x)] = 0
 
@@ -43,11 +43,10 @@ class ActorCopy(nn.Module):
             decoder_output, decoder_hidden = self.decoder(decoder_input, encoder_outputs,
                                                                     prev_word, x, prev_probs, decoder_hidden)
 
-            states.append(decoder_hidden)
-
-            distribution = decoder_output.data[:]
+            states.append(decoder_hidden[0])
+            distribution = decoder_output[:]
             distribution[0][not_allowed_actions] = 0
-            distribution = Categorical(logits=distribution)
+            distribution = Categorical(probs=distribution)
 
             # todo update Actor-Critic Model to expect action word instead of embedding
 
@@ -56,7 +55,7 @@ class ActorCopy(nn.Module):
             get_word = lambda i: self.output_lang.index2word[i] if is_vocab(i) else x[i-self.output_lang.size()]
             action = get_word(action)
 
-            probs.append(sum([decoder_output.data[0][idx] for idx in range(len(decoder_output.data[0]))
+            probs.append(sum([decoder_output[0][idx] for idx in range(len(decoder_output[0]))
                               if get_word(idx) == action]))
 
             actions.append(action)
@@ -66,10 +65,8 @@ class ActorCopy(nn.Module):
 
             prev_word = actions[-1]
             prev_probs = probs[-1]
-            decoder_input = self.embedding(action) # oov index if not used
+            decoder_input = self.embedding[action] # oov index if not used
 
-        actions.append(None)  # last state is terminal and so does not have an action
-        probs.append(0)
         return states, actions, probs
 
 
@@ -84,8 +81,6 @@ class EncoderBiRNN(nn.Module):
         output, hidden = self.lstm(input.view(1, 1, input.size(0)), hidden)
         return output, hidden
 
-    def init_hidden(self):  # TODO: I think we can delete this
-        return torch.zeros(1, 1, self.hidden_size)
 
 
 class CopyDecoder(nn.Module):
