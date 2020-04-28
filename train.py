@@ -20,6 +20,7 @@ if torch.cuda.is_available():
 
 LOAD_INDEX = -1
 
+torch.autograd.set_detect_anomaly(True)
 
 def train():
     experiences_buffer = deque(maxlen=config.MAX_EXPERIENCES_SIZE)
@@ -78,6 +79,7 @@ def train():
 
         critic_optimizer.zero_grad()
         loss = critic_criterion(q_s, q_estimated)
+
         loss.backward(retain_graph=True)
         critic_optimizer.step()
 

@@ -64,7 +64,7 @@ class ActorCopy(nn.Module):
                 break
 
             prev_word = actions[-1]
-            prev_probs = distribution
+            prev_probs = decoder_output[:]
             decoder_input = self.embedding[action]  # oov index if not used
 
         return states, actions, probs
@@ -127,13 +127,12 @@ class CopyDecoder(nn.Module):
 
         # 2-2) get scores score_c for copy mode, remove possibility of giving attention to padded values
         score_c = F.tanh(self.Wc(encoder_outputs.view(-1,hidden_size))) # [1*seq x hidden_size]
-        score_c = score_c.view(1, -1, hidden_size) # [1 x seq x hidden_size]
-        score_c = (score_c * hidden[0]).sum(dim=2) # [1 x seq]
+        final_score_c = (score_c.view(1, -1, hidden_size) * hidden[0]).sum(dim=2) # [1 x seq]
 
         # after this section - section c is done
 
         # ....
         # 2-3) get softmax-ed probabilities
-        score = torch.cat([score_g[0][0], score_c[0]]) # [1 x (vocab+seq)]
+        score = torch.cat([score_g[0][0].clone(), final_score_c[0]]) # [1 x (vocab+seq)]
         probs = F.softmax(score)
         return probs, hidden
