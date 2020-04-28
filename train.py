@@ -7,7 +7,7 @@ from typing import Deque
 import torch
 
 import config
-from actor import Actor
+from actor_copy import ActorCopy
 from critic import Critic
 from dataset_reader import DataSetReader
 from language import Lang
@@ -18,14 +18,14 @@ Experience = namedtuple('Experience', ['state', 'action', 'next_state', 'reward'
 if torch.cuda.is_available():
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
-LOAD_INDEX = 700
+LOAD_INDEX = -1
 
 
 def train():
     experiences_buffer = deque(maxlen=config.MAX_EXPERIENCES_SIZE)
     word2vec = LightWord2Vec()
     lang = Lang(word2vec.get_vocab())
-    actor = Actor(config.EMBEDDING_SIZE, config.STATE_SIZE, lang, word2vec)
+    actor = ActorCopy(config.EMBEDDING_SIZE, config.STATE_SIZE, lang, word2vec)
     critic = Critic(config.STATE_SIZE, config.EMBEDDING_SIZE, config.CRITIC_HIDDEN_SIZE)
     reader = DataSetReader('train')
     critic_optimizer = torch.optim.Adam(critic.parameters())
@@ -65,7 +65,7 @@ def train():
 
         for idx in range(exp_length):
             exp = experiences_buffer[random.randint(0, exp_length - 1)]
-            action_emb = word2vec[lang.index2word[int(exp.action)]]
+            action_emb = word2vec[exp.action]
             q_estimated.append(critic(exp.state, action_emb)[0, 0])
             q_s[idx] = exp.reward
             if exp.next_state is not None:

@@ -18,7 +18,7 @@ class ActorCopy(nn.Module):
     def forward(self, x, allowed_actions):
         encoder_hidden = None
         input_length = len(x)
-        encoder_outputs = torch.zeros(config.MAX_LENGTH, self.encoder.hidden_size)
+        encoder_outputs = torch.zeros(len(x), self.encoder.hidden_size)
 
         for ei in range(input_length):
             encoder_output, encoder_hidden = self.encoder(self.embedding[x[ei]], encoder_hidden)
@@ -30,9 +30,9 @@ class ActorCopy(nn.Module):
         states = [decoder_hidden[0]]
         actions = []
 
-        not_allowed_actions = np.ones(self.output_lang.size()+len(actions)) # TODO: CR you set actions to [] on the line before
+        not_allowed_actions = np.ones(self.output_lang.size()+input_length)
         not_allowed_actions[[self.output_lang.word_to_index(act) for act in allowed_actions]] = 0
-        not_allowed_actions[self.output_lang.size():self.output_lang.size()+len(x)] = 0
+        not_allowed_actions[self.output_lang.size():self.output_lang.size()+input_length] = 0
 
         probs = []
 
@@ -47,9 +47,6 @@ class ActorCopy(nn.Module):
             distribution = decoder_output[:]
             distribution[0][not_allowed_actions] = 0
             distribution = Categorical(probs=distribution)
-
-            # todo update Actor-Critic Model to expect action word instead of embedding
-
             action = distribution.sample().detach()
             is_vocab = lambda i: i < self.output_lang.size()
             get_word = lambda i: self.output_lang.index2word[i] if is_vocab(i) else x[i-self.output_lang.size()]
@@ -70,7 +67,6 @@ class ActorCopy(nn.Module):
         return states, actions, probs
 
 
-# todo convert Encoder to bidrectional
 class EncoderBiRNN(nn.Module):
     def __init__(self, embedding_size, hidden_size):
         super(EncoderBiRNN, self).__init__()
@@ -82,20 +78,17 @@ class EncoderBiRNN(nn.Module):
         return output, hidden
 
 
-
 class CopyDecoder(nn.Module):
     def __init__(self, vocab_size, embed_size, hidden_size):
         super(CopyDecoder, self).__init__()
         self.vocab_size = vocab_size
         self.hidden_size = hidden_size
         self.lstm = nn.LSTM(input_size=embed_size+hidden_size*2, hidden_size=hidden_size)
-
         self.attn = nn.Linear(self.hidden_size * 2, self.max_length)
         self.attn_combine = nn.Linear(self.hidden_size * 2, self.hidden_size)
         # weights
-        self.Ws = nn.Linear(hidden_size*2, hidden_size) # only used at initial stage
-        self.Wo = nn.Linear(hidden_size, vocab_size) # generate mode
-        self.Wc = nn.Linear(hidden_size*2, hidden_size) # copy mode
+        self.Wo = nn.Linear(hidden_size, vocab_size)  # generate mode
+        self.Wc = nn.Linear(hidden_size*2, hidden_size)  # copy mode
 
     def forward(self, input, encoder_outputs, prev_word, sentence, prev_probs, hidden):
         vocab_size = self.vocab_size
@@ -119,7 +112,7 @@ class CopyDecoder(nn.Module):
 
         # 2. predict next word y_t
         # 2-1) get scores score_g for generation- mode
-        score_g = self.Wo(hidden) # [vocab_size]
+        score_g = self.Wo(hidden)  # [vocab_size]
 
         # 2-2) get scores score_c for copy mode, remove possibility of giving attention to padded values
         score_c = F.tanh(self.Wc(encoder_outputs.view(-1,hidden_size*2))) # [1*seq x hidden_size]
