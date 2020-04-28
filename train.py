@@ -46,7 +46,7 @@ def train():
         for x, y in reader.read(config.TRAIN_BATCH_SIZE):
             for sentence, target_sentence in zip(x, y):
                 states, actions, probs = actor(sentence, get_possible_actions(lang, sentence))
-                predicted_sentence = [lang.index2word[int(action)] for action in actions[:-1]]  # Skip None
+                predicted_sentence = actions[:-1]  # Skip None
 
                 # todo think maybe about a better reward function
                 rewards = [bleu_reward(target_sentence[:i + 1], predicted_sentence[:i + 1]) for i in

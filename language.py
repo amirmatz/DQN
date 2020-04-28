@@ -38,7 +38,7 @@ class Lang:
         self.index2word = {0: config.SOS_TOKEN, 1: config.EOS_TOKEN, 2: config.UNK_TOKEN}
         for word in self.get_actions():
             self.add_sentence(word)
-        with open("vocab.txt") as f:
+        with open("vocab.txt", encoding='utf8') as f:
             for line in f.readlines():
                 self.add_sentence(line)
         for word in vocab:
