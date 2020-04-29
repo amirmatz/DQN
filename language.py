@@ -35,7 +35,7 @@ def canonize(word: str) -> str:
 class Lang:
     def __init__(self, vocab: Iterable[str]):
         self.word2index = defaultdict(lambda: UNK_TOKEN_INDEX)  # TODO: rethink, a bit extreme
-        self.index2word = {0: config.SOS_TOKEN, 1: config.EOS_TOKEN, 2: config.UNK_TOKEN}
+        self.index2word = [config.SOS_TOKEN, config.EOS_TOKEN, config.UNK_TOKEN]
         for word in self.get_actions():
             self.add_sentence(word)
         with open("vocab.txt") as f:

@@ -11,6 +11,7 @@ from actor import Actor
 from critic import Critic
 from dataset_reader import DataSetReader
 from language import Lang
+from model_saver import save_model, load_model
 from reward import bleu_reward
 from vectorize_words import LightWord2Vec
 
@@ -18,7 +19,7 @@ Experience = namedtuple('Experience', ['state', 'action', 'next_state', 'reward'
 if torch.cuda.is_available():
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
-LOAD_INDEX = 700
+LOAD_INDEX = -1
 
 
 def train():
@@ -33,9 +34,7 @@ def train():
     actor_optimizer = torch.optim.Adam(actor.parameters())
 
     if LOAD_INDEX > -1:
-        with open(f"pickles/epoch_{LOAD_INDEX}.pkl", "rb") as f:
-            actor.encoder, actor.decoder, lang.index2word, \
-            critic, critic_optimizer, critic_criterion, actor_optimizer = pickle.load(f)
+        actor, critic, critic_optimizer, critic_criterion, actor_optimizer, lang = load_model(LOAD_INDEX)
 
     if torch.cuda.is_available():
         actor.cuda()
@@ -93,11 +92,8 @@ def train():
             critic.zero_grad()
 
         print("Finished epoch:", epoch, " loss is ", torch.sum(loss))
-        if epoch % 100 == 0:
-            with open(f"pickles/epoch_{epoch}.pkl", "wb") as f:
-                pickle.dump((actor.encoder, actor.decoder, lang.index2word, critic, critic_optimizer, critic_criterion,
-                             actor_optimizer),
-                            f)
+        if epoch % 100 == 1:
+            save_model(epoch, actor, critic, critic_optimizer, critic_criterion, actor_optimizer, lang)
 
 
 #
