@@ -22,6 +22,7 @@ def wrap_sentence(sentence: str) -> List[str]:
     # TODO: removing all words without letter or chars. seems right but reconsider
     words = [w for w in splitter.split(sentence)]
     words = [remove_tokens(w) for w in words]
+    words = [word for word in words if word]
     return [config.SOS_TOKEN] + words + [config.EOS_TOKEN]
 
 
