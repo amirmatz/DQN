@@ -53,7 +53,7 @@ class Lang:
     def add_word(self, word):
         if word not in self.word2index:
             self.word2index[word] = self.n_words
-            self.index2word[self.n_words] = word.lower()
+            self.index2word.append(word.lower())
 
     def word_to_index(self, word):
         if word in self.word2index:
