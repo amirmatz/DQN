@@ -1,22 +1,9 @@
-import pickle
-
-import config
 from actor import Actor
 from dataset_reader import wrap_sentence
-from language import Lang
-from train import get_possible_actions, LOAD_INDEX
-from vectorize_words import LightWord2Vec
+from model_saver import load_model
+from train import get_possible_actions
 
-word2vec = LightWord2Vec()
-lang = Lang(word2vec.get_vocab())
-actor = Actor(config.EMBEDDING_SIZE, config.STATE_SIZE, lang, word2vec)
-
-with open(f"pickles/epoch_{LOAD_INDEX}.pkl", "rb") as f:
-    actor.encoder, actor.decoder, lang.index2word, critic, critic_optimizer, critic_criterion, actor_optimizer = pickle.load(
-        f)
-
-for index, word in lang.index2word.items():
-    lang.word2index[word] = index
+actor, critic, critic_optimizer, critic_criterion, actor_optimizer, lang = load_model(0)
 
 
 def test_actor(actor: Actor, sentence: str) -> None:

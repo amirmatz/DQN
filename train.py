@@ -90,9 +90,10 @@ def train():
             actor.zero_grad()
             critic.zero_grad()
 
-        print("Finished epoch:", epoch, " loss is ", torch.sum(loss))
         if epoch % 100 == 0:
             save_model(epoch, actor, critic, critic_optimizer, critic_criterion, actor_optimizer, lang)
+
+        print("Finished epoch:", epoch, " loss is ", torch.sum(loss))
 
 
 #

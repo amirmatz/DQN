@@ -1,9 +1,9 @@
 import pickle
-from io import StringIO
 
-import torch
-
+import config
+from actor import Actor
 from language import Lang
+from vectorize_words import LightWord2Vec
 
 try:
     from google.colab import files
@@ -15,16 +15,10 @@ except:
 
 def save_model(epoch, actor, critic, critic_optimizer, critic_criterion,
                actor_optimizer, lang):
-    torches = [actor, critic, critic_optimizer, critic_criterion, actor_optimizer]
-    pickled = []
-    for torch_obj in torches:
-        s = StringIO()
-        torch.save(torch_obj, s)
-        pickled.append(s)
-
-    pickled.append(lang.index2word)
+    torches = [critic, critic_optimizer, critic_criterion, actor_optimizer, actor.encoder, actor.decoder,
+               lang.index2word]
     with open(f"pickles/epoch_{epoch}.pkl", "wb") as f:
-        pickle.dump(pickled, f)
+        pickle.dump(torches, f)
 
     if IS_COLAB:
         files.download(f"pickles/epoch_{epoch}.pkl")
@@ -34,15 +28,15 @@ def load_model(epoch):
     with open(f"pickles/epoch_{epoch}.pkl", "rb") as f:
         pickled = pickle.load(f)
 
-    lang = Lang([])
+    word2vec = LightWord2Vec()
+    lang = Lang(word2vec.get_vocab())
+    actor = Actor(config.EMBEDDING_SIZE, config.STATE_SIZE, lang, word2vec)
+
     lang.index2word = pickled.pop()
-    for index, word in lang.index2word.items():
+    for index, word in enumerate(lang.index2word):
         lang.word2index[word] = index
 
-    output = []
-    for torch_obj in pickled:
-        output.append(torch.load(torch_obj))
+    actor.decoder = pickled.pop()
+    actor.encoder = pickled.pop()
 
-    output.append(lang)
-
-    return output
+    return [actor] + pickled + [lang]
