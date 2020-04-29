@@ -1,4 +1,3 @@
-import pickle
 from collections import deque, namedtuple
 import itertools
 import random

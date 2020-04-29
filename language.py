@@ -2,6 +2,7 @@ from collections import defaultdict
 from typing import Iterable
 
 import config
+from dataset_reader import remove_tokens
 
 SOS_TOKEN_INDEX = 0
 EOS_TOKEN_INDEX = 1
@@ -26,10 +27,6 @@ ACTIONS = list(word for sent in {
     'which', 'and', ',', 'sum', 'difference', 'multiplication', 'division',
     '#1', '#2', '#3', '#4', '#5', '#6', '#7', '#8', '#9', '#10'
 } for word in sent.split())
-
-
-def canonize(word: str) -> str:
-    return "".join([c for c in word.lower() if c.isalpha() or c.isdigit()])
 
 
 class Lang:
@@ -62,7 +59,7 @@ class Lang:
         if word in self.word2index:
             return self.word2index[word]
 
-        canonized_word = canonize(word)
+        canonized_word = remove_tokens(word)
         if canonized_word == "":
             raise ValueError(word)
 
