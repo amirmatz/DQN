@@ -7,17 +7,23 @@ import config
 
 splitter = re.compile("[ \-]")
 _mode_to_files = {
-    "train": ["train.csv"],  # TODO: insert desired input path
+    "train": ["train_qdmr.csv", "train_high.csv", "train_forms.csv"],  # TODO: insert desired input path
     "test": []
 }
+
+
+def remove_tokens(word: str) -> str:
+    return "".join(c for c in word if c.isalpha() or c.isdigit() or c.isupper() or c in ["#", "@"])
 
 
 def wrap_sentence(sentence: str) -> List[str]:
     # sentence = [clean_word(word) for word in sentence.split()]
     # sentence = [word for word in sentence if any(word)]
     # TODO: removing all words without letter or chars. seems right but reconsider
-    return [config.SOS_TOKEN] + [w for w in splitter.split(sentence) if
-                                 w.isalpha() or w.isdigit() or w.isupper() or w in ["#", "@"]] + [config.EOS_TOKEN]
+    words = [w for w in splitter.split(sentence)]
+    words = [remove_tokens(w) for w in words]
+    words = [word for word in words if word]
+    return [config.SOS_TOKEN] + words + [config.EOS_TOKEN]
 
 
 def batch(lst, batch_size):

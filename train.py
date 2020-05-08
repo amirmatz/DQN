@@ -1,4 +1,3 @@
-import pickle
 from collections import deque, namedtuple
 import itertools
 import random
@@ -11,6 +10,7 @@ from actor_copy import ActorCopy
 from critic import Critic
 from dataset_reader import DataSetReader
 from language import Lang
+from model_saver import save_model, load_model
 from reward import bleu_reward
 from vectorize_words import LightWord2Vec
 
@@ -34,9 +34,7 @@ def train():
     actor_optimizer = torch.optim.Adam(actor.parameters())
 
     if LOAD_INDEX > -1:
-        with open(f"pickles/epoch_{LOAD_INDEX}.pkl", "rb") as f:
-            actor.encoder, actor.decoder, lang.index2word, \
-            critic, critic_optimizer, critic_criterion, actor_optimizer = pickle.load(f)
+        actor, critic, critic_optimizer, critic_criterion, actor_optimizer, lang = load_model(LOAD_INDEX)
 
     if torch.cuda.is_available():
         actor.cuda()
@@ -94,12 +92,10 @@ def train():
             actor.zero_grad()
             critic.zero_grad()
 
-        print("Finished epoch:", epoch, " loss is ", torch.sum(loss))
         if epoch % 100 == 0:
-            with open(f"pickles/epoch_{epoch}.pkl", "wb") as f:
-                pickle.dump((actor.encoder, actor.decoder, lang.index2word, critic, critic_optimizer, critic_criterion,
-                             actor_optimizer),
-                            f)
+            save_model(epoch, actor, critic, critic_optimizer, critic_criterion, actor_optimizer, lang)
+
+        print("Finished epoch:", epoch, " loss is ", torch.sum(loss))
 
 
 #
