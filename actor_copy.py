@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.distributions import Categorical
-import numpy as np
 import config
 
 
@@ -20,19 +18,20 @@ class ActorCopy(nn.Module):
         input_length = len(x)
         encoder_outputs = torch.zeros(config.MAX_LENGTH, self.encoder.hidden_size)
 
-        for ei in range(input_length):
-            encoder_output, encoder_hidden = self.encoder(self.embedding[x[ei]], encoder_hidden)
+        for ei, word in enumerate(x):
+            encoder_output, encoder_hidden = self.encoder(self.embedding[word], encoder_hidden)
             encoder_outputs[ei] += encoder_output[0, 0]
 
         decoder_input = self.embedding[config.SOS_TOKEN]  # SOS
-        decoder_hidden = encoder_hidden
+        decoder_hidden = [item.view(1, 1, -1) for item in encoder_hidden]
 
         states = [decoder_hidden[0]]
         actions = []
 
-        not_allowed_actions = np.ones(self.output_lang.size()+config.MAX_LENGTH)
-        not_allowed_actions[[self.output_lang.word_to_index(act) for act in allowed_actions]] = 0
-        not_allowed_actions[self.output_lang.size():self.output_lang.size()+input_length] = 0
+        # allowed actions indices are every allowed_action and every word in sentence except SOS and EOS
+        allowed_actions_indices = torch.zeros(self.output_lang.size() + config.MAX_LENGTH)
+        allowed_actions_indices[[self.output_lang.word_to_index(act) for act in allowed_actions]] = 1
+        allowed_actions_indices[self.output_lang.size() + 1:self.output_lang.size() + input_length - 1] = 1
 
         probs = []
 
@@ -41,22 +40,19 @@ class ActorCopy(nn.Module):
         for di in range(config.MAX_LENGTH):
             # decoder_input
             decoder_output, decoder_hidden = self.decoder(decoder_input, encoder_outputs,
-                                                                    prev_word, x, prev_probs, decoder_hidden)
+                                                          prev_word, x, prev_probs, decoder_hidden)
 
             states.append(decoder_hidden[0])
-            distribution = decoder_output[:]
-            distribution[not_allowed_actions == 1] = 0
+            distribution = decoder_output.squeeze() * allowed_actions_indices
             distribution_caterogical = Categorical(probs=distribution)
-            action = int(distribution_caterogical.sample().detach())
+            action_idx = distribution_caterogical.sample()
             is_vocab = lambda i: i < self.output_lang.size()
-            get_word = lambda i: self.output_lang.index2word[i] if is_vocab(i) else x[i-self.output_lang.size()]
-            try:
-                action = get_word(action)
-            except:
-                print(action)
+            get_word = lambda i: self.output_lang.index2word[i] if is_vocab(i) else x[i - self.output_lang.size()]
+            action = get_word(action_idx)
 
-            probs.append(float(decoder_output[[idx for idx in range(decoder_output.shape[0])
-                                               if idx < self.output_lang.size()+len(x) and get_word(idx) == action]].sum()))
+            probs.append(decoder_output[[idx for idx in range(decoder_output.shape[0])
+                                         if idx < self.output_lang.size() + len(x) and get_word(
+                    idx) == action]].sum())
 
             actions.append(action)
 
@@ -64,7 +60,7 @@ class ActorCopy(nn.Module):
                 break
 
             prev_word = actions[-1]
-            prev_probs = decoder_output[:]
+            prev_probs = decoder_output.detach()
             decoder_input = self.embedding[action]  # oov index if not used
 
         return states, actions, probs
@@ -74,8 +70,7 @@ class EncoderBiRNN(nn.Module):
     def __init__(self, embedding_size, hidden_size):
         super(EncoderBiRNN, self).__init__()
         self.hidden_size = hidden_size
-        # self.lstm = nn.LSTM(embedding_size, hidden_size//2, num_layers=1, bidirectional=True)
-        self.lstm = nn.LSTM(embedding_size, hidden_size, num_layers=1, bidirectional=False)
+        self.lstm = nn.LSTM(embedding_size, hidden_size // 2, num_layers=1, bidirectional=True)
 
     def forward(self, input: torch.Tensor, hidden):
         output, hidden = self.lstm(input.view(1, 1, input.size(0)), hidden)
@@ -87,52 +82,67 @@ class CopyDecoder(nn.Module):
         super(CopyDecoder, self).__init__()
         self.vocab_size = vocab_size
         self.hidden_size = hidden_size
-        self.lstm = nn.LSTM(input_size=embed_size+hidden_size*2, hidden_size=hidden_size)
+        self.lstm = nn.LSTM(input_size=embed_size + hidden_size * 2, hidden_size=hidden_size)
+
         self.attn = nn.Linear(self.hidden_size * 2, max_length)
         self.attn_combine = nn.Linear(self.hidden_size * 2, self.hidden_size)
         # weights
-        self.Wo = nn.Linear(hidden_size, vocab_size)  # generate mode
-        self.Wc = nn.Linear(hidden_size, hidden_size)  # copy mode
+        self._generate_layer = nn.Linear(hidden_size, vocab_size)  # generate mode
+        self._copy_layer = nn.Linear(hidden_size, hidden_size)  # copy mode
 
     def forward(self, input, encoder_outputs, prev_word, sentence, prev_probs, hidden):
-        vocab_size = self.vocab_size
-        hidden_size = self.hidden_size
-
         if prev_word is None:
-            selective_read = torch.zeros(1, self.hidden_size)
-            attentive_read = torch.zeros(1, self.hidden_size)
+            selective_read = torch.zeros(self.hidden_size)
+            attentive_read = torch.zeros(self.hidden_size)
         else:
-            a = torch.cat([input, hidden[0][0][0]]).reshape(1,1,-1)
+            a = torch.cat([input, hidden[0].squeeze()]).unsqueeze(0)
             b = self.attn(a)
-            attentive_read = F.softmax(b, dim=1).squeeze(0).squeeze(0).unsqueeze(1)
-            attentive_read = attentive_read * encoder_outputs
-            attentive_read = attentive_read.sum(dim=0).unsqueeze(0)
+            attentive_read = torch.softmax(b, dim=1)
+            attentive_read = torch.matmul(attentive_read, encoder_outputs).squeeze()  # [hidden_size]
+            # TODO Amir: is this the way you visioned it? Why not use an implementation of attention?
 
-            probs_c = prev_probs[vocab_size:]
-            probs_c[[idx for idx in range(probs_c.shape[0]) if idx >= len(sentence) or sentence[idx] != prev_word]] = 0
-            probs_sum = probs_c.sum()
-            if probs_sum != 0.0:
-                probs_c = probs_c / probs_c.sum()
-            selective_read = probs_c.unsqueeze(1) * encoder_outputs
-            selective_read = selective_read.sum(dim=0).unsqueeze(0)
+            probs_c = self._get_copy_probs(sentence, prev_probs, prev_word)
+            selective_read = torch.matmul(probs_c.unsqueeze(0), encoder_outputs).squeeze()  # [hidden_size]
 
         # 1. update states
-        a = torch.cat([input, selective_read[0], attentive_read[0]]).reshape(1,1,-1) # 1 * (h*2 + emb)
+        a = torch.cat([input, selective_read, attentive_read]).unsqueeze(0).unsqueeze(0)  # [1 x1 x (h*2 + emb)]
+        _, hidden = self.lstm(a, hidden)  # s_t = f(y_(t-1), s_t-1, c_t)
 
-        _, hidden = self.lstm(a, hidden) # s_t = f(y_(t-1), s_t-1, c_t)
-
-        # 2. predict next word y_t
-        # 2-1) get scores score_g for generation- mode
-        score_g = self.Wo(hidden[0])  # [vocab_size]
+        generate_score = self._get_generate_score(hidden[0])
 
         # 2-2) get scores score_c for copy mode, remove possibility of giving attention to padded values
-        score_c = F.tanh(self.Wc(encoder_outputs.view(-1,hidden_size))) # [1*seq x hidden_size]
-        final_score_c = (score_c.view(1, -1, hidden_size) * hidden[0]).sum(dim=2) # [1 x seq]
+        copy_score = self._get_copy_score(encoder_outputs, hidden[0])
 
         # after this section - section c is done
 
         # ....
         # 2-3) get softmax-ed probabilities
-        score = torch.cat([score_g[0][0].clone(), final_score_c[0]]) # [1 x (vocab+seq)]
-        probs = F.softmax(score)
+        score = torch.cat([generate_score, copy_score], dim=2)  # [(vocab+seq)]
+        probs = torch.softmax(score, dim=2)
         return probs, hidden
+
+    def _get_copy_score(self, encoder_outputs, hi):
+        copy_proj = self._copy_layer(encoder_outputs)  # [seq x hidden_size]
+        score_c = torch.tanh(copy_proj)  # [seq x hidden_size]
+        return torch.matmul(score_c, hi.squeeze()).unsqueeze(0).unsqueeze(0)  # [seq]
+
+    def _get_generate_score(self, hi):
+        # 2. predict next word y_t
+        # 2-1) get scores score_g for generation- mode
+        return self._generate_layer(hi)  # [1 x vocab_size]
+
+    def _get_copy_probs(self, sentence, prev_probs, prev_word):
+        probs_c = prev_probs.squeeze()[self.vocab_size:]
+
+        unused_words = torch.ones(probs_c.shape)
+        unused_words[0] = 0  # SOS
+        unused_words[len(sentence) - 1:] = 0  # EOS until the end
+        unused_words[[idx for idx in range(1, len(sentence)) if sentence[idx] == prev_word]] = 0  # The prev word
+        # TODO Amir: this was `sentence[idx] != prev_word` it was a bug right?
+
+        probs_c *= unused_words
+        probs_sum = probs_c.sum()
+        if probs_sum != 0.0:
+            probs_c /= probs_c.sum()
+
+        return probs_c
