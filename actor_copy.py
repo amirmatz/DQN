@@ -50,9 +50,15 @@ class ActorCopy(nn.Module):
             get_word = lambda i: self.output_lang.index2word[i] if is_vocab(i) else x[i - self.output_lang.size()]
             action = get_word(action_idx)
 
-            probs.append(decoder_output[[idx for idx in range(decoder_output.shape[0])
-                                         if idx < self.output_lang.size() + len(x) and get_word(
-                    idx) == action]].sum())
+            prob = distribution[action_idx]
+            if is_vocab(action_idx):
+                for i, w in enumerate(x):  # If word in vocab check if it is in sentence
+                    if w == x:  # Might appear multiple times
+                        prob += distribution[self.output_lang.size() + i]
+            else:  # If word in sentence then find prob in vocab
+                prob += distribution[self.output_lang.word_to_index(action)]
+
+            probs.append(prob)
 
             actions.append(action)
 
@@ -142,7 +148,7 @@ class CopyDecoder(nn.Module):
 
         probs_c *= unused_words
         probs_sum = probs_c.sum()
-        if probs_sum != 0.0:
-            probs_c /= probs_c.sum()
+        if probs_sum > 0:
+            probs_c /= probs_sum
 
         return probs_c
