@@ -1,7 +1,7 @@
 import pickle
 
 import config
-from actor import Actor
+from actor_copy import ActorCopy
 from language import Lang
 from vectorize_words import LightWord2Vec
 
@@ -30,7 +30,7 @@ def load_model(epoch):
 
     word2vec = LightWord2Vec()
     lang = Lang(word2vec.get_vocab())
-    actor = Actor(config.EMBEDDING_SIZE, config.STATE_SIZE, lang, word2vec)
+    actor = ActorCopy(config.EMBEDDING_SIZE, config.STATE_SIZE, lang, word2vec)
 
     lang.index2word = pickled.pop()
     for index, word in enumerate(lang.index2word):
