@@ -9,7 +9,7 @@ actor, critic, critic_optimizer, critic_criterion, actor_optimizer, lang = load_
 def test_actor(actor: Actor, sentence: str) -> None:
     sentence = wrap_sentence(sentence)
     states, actions, probs = actor(sentence, get_possible_actions(lang, sentence))
-    predicted_sentence = [lang.index2word[int(action)] for action in actions[:-1]]
+    predicted_sentence = [action for action in actions[:-1]]
     print(predicted_sentence)
 
 

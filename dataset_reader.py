@@ -66,6 +66,14 @@ class DataSetReader:
     def __init__(self, mode: str) -> None:
         self._orig_df = _load_mode_df(mode)
 
+    def get_all(self):
+        sample = self._orig_df
+
+        x = sample["question_text"].apply(wrap_sentence)
+        y = sample["decomposition"].apply(process_target).apply(wrap_sentence)
+
+        return zip(x, y)
+
     def read(self, batch_size) -> Iterable[Tuple[List[str], List[str]]]:
         sample = self._orig_df.sample(batch_size)
 
