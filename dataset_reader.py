@@ -8,7 +8,8 @@ import config
 splitter = re.compile("[ \-]")
 _mode_to_files = {
     "train": ["train_qdmr.csv", "train_high.csv", "train_forms.csv"],  # TODO: insert desired input path
-    "test": []
+    "test": ["test_qdmr.csv", "test_high.csv", "test_forms.csv"],
+    "dev": ["dev_qdmr.csv", "dev_high.csv", "dev_forms.csv"]
 }
 
 
