@@ -17,5 +17,5 @@ def bleu_reward(sent1, sent2):
 
 
 def sari_reward(orig_sentence, predict_sentence, ref_sentence):
-    return SARIsent(list_to_sentence(predict_sentence), list_to_sentence(orig_sentence),
+    return SARIsent(list_to_sentence(orig_sentence), list_to_sentence(predict_sentence),
                     [list_to_sentence(ref_sentence)])
