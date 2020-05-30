@@ -11,7 +11,7 @@ from critic import Critic
 from dataset_reader import DataSetReader
 from language import Lang
 from model_saver import save_model, load_model
-from reward import bleu_reward
+from reward import sari_reward
 from vectorize_words import LightWord2Vec
 
 Experience = namedtuple('Experience', ['state', 'action', 'next_state', 'reward', 'probs', 'sentence'])
@@ -47,7 +47,7 @@ def train():
                 predicted_sentence = actions[:-1]  # Skip None
 
                 # todo think maybe about a better reward function
-                rewards = [bleu_reward(target_sentence[:i + 1], predicted_sentence[:i + 1]) for i in
+                rewards = [sari_reward(sentence[:i + 1], predicted_sentence[:i + 1], target_sentence[:i + 1]) for i in
                            range(max(len(target_sentence), len(predicted_sentence)))] + [0]
 
                 for i in range(len(states) - 1):

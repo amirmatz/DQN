@@ -8,7 +8,8 @@ import config
 splitter = re.compile("[ \-]")
 _mode_to_files = {
     "train": ["train_qdmr.csv", "train_high.csv", "train_forms.csv"],  # TODO: insert desired input path
-    "test": []
+    "test": ["test_qdmr.csv", "test_high.csv", "test_forms.csv"],
+    "dev": ["dev_qdmr.csv", "dev_high.csv", "dev_forms.csv"]
 }
 
 
@@ -65,6 +66,14 @@ def _load_mode_df(mode) -> pd.DataFrame:
 class DataSetReader:
     def __init__(self, mode: str) -> None:
         self._orig_df = _load_mode_df(mode)
+
+    def get_all(self):
+        sample = self._orig_df
+
+        x = sample["question_text"].apply(wrap_sentence)
+        y = sample["decomposition"].apply(process_target).apply(wrap_sentence)
+
+        return zip(x, y)
 
     def read(self, batch_size) -> Iterable[Tuple[List[str], List[str]]]:
         sample = self._orig_df.sample(batch_size)
