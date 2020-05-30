@@ -1,13 +1,9 @@
-import gzip
-import json
 from abc import ABC, abstractmethod
-from typing import Iterable, List
+from typing import Iterable
 
 import numpy as np
 import torch
 import fasttext
-
-from nltk import word_tokenize
 
 
 class BaseEmbedding(ABC):
