@@ -10,12 +10,6 @@
 #     "Optimizing Statistical Machine Translation for Text Simplification"
 #     Wei Xu, Courtney Napoles, Ellie Pavlick, Quanze Chen and Chris Callison-Burch
 #     In Transactions of the Association for Computational Linguistics (TACL) 2015
-#
-# There is also a Java implementation of the SARI metric
-# that is integrated into the Joshua MT Decoder. It can
-# be used for tuning Joshua models for a real end-to-end
-# text simplification model.
-#
 
 from collections import Counter
 from typing import List
@@ -97,7 +91,7 @@ def SARIngram(sgrams, cgrams, rgramslist, numref):
     return (keepscore, delscore_precision, addscore)
 
 
-def SARIsent(ssent:str, csent:str, rsents:List[str]):
+def SARIsent(ssent: str, csent: str, rsents: List[str]):
     numref = len(rsents)
 
     s1grams = ssent.lower().split(" ")
@@ -165,20 +159,3 @@ def SARIsent(ssent:str, csent:str, rsents:List[str]):
     finalscore = (avgkeepscore + avgdelscore + avgaddscore) / 3
 
     return finalscore
-
-
-def main():
-    ssent = "About 95 species are currently accepted ."
-    csent1 = "About 95 you now get in ."
-    csent2 = "About 95 species are now agreed ."
-    csent3 = "About 95 species are currently agreed ."
-    rsents = ["About 95 species are currently known .", "About 95 species are now accepted .",
-              "95 species are now accepted ."]
-
-    print(SARIsent(ssent, csent1, rsents))
-    print(SARIsent(ssent, csent2, rsents))
-    print(SARIsent(ssent, csent3, rsents))
-
-
-if __name__ == '__main__':
-    main()

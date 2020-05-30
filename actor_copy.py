@@ -105,7 +105,6 @@ class CopyDecoder(nn.Module):
             b = self.attn(a)
             attentive_read = torch.softmax(b, dim=1)
             attentive_read = torch.matmul(attentive_read, encoder_outputs).squeeze()  # [hidden_size]
-            # TODO Amir: is this the way you visioned it? Why not use an implementation of attention?
 
             probs_c = self._get_copy_probs(sentence, prev_probs, prev_word)
             selective_read = torch.matmul(probs_c.unsqueeze(0), encoder_outputs).squeeze()  # [hidden_size]
@@ -144,7 +143,6 @@ class CopyDecoder(nn.Module):
         unused_words[0] = 0  # SOS
         unused_words[len(sentence) - 1:] = 0  # EOS until the end
         unused_words[[idx for idx in range(1, len(sentence)) if sentence[idx] == prev_word]] = 0  # The prev word
-        # TODO Amir: this was `sentence[idx] != prev_word` it was a bug right?
 
         probs_c *= unused_words
         probs_sum = probs_c.sum()

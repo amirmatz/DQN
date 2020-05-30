@@ -46,7 +46,6 @@ def train():
                 states, actions, probs = actor(sentence, get_possible_actions(lang, sentence))
                 predicted_sentence = actions[:-1]  # Skip None
 
-                # todo think maybe about a better reward function
                 rewards = [sari_reward(sentence[:i + 1], predicted_sentence[:i + 1], target_sentence[:i + 1]) for i in
                            range(max(len(target_sentence), len(predicted_sentence)))] + [0]
 
@@ -107,12 +106,6 @@ def shared_loss(experience_buffer: Deque[Experience], q_estimated: torch.Tensor)
 
 def get_possible_actions(lang, sentence):
     return itertools.chain(sentence, lang.get_actions())
-
-
-# todo
-# set encoding from word2vec
-# set data reader
-# check q function recommended layers
 
 
 if __name__ == '__main__':

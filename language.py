@@ -31,7 +31,7 @@ ACTIONS = list(word for sent in {
 
 class Lang:
     def __init__(self, vocab: Iterable[str]):
-        self.word2index = defaultdict(lambda: UNK_TOKEN_INDEX)  # TODO: rethink, a bit extreme
+        self.word2index = defaultdict(lambda: UNK_TOKEN_INDEX)
         self.index2word = [config.SOS_TOKEN, config.EOS_TOKEN, config.UNK_TOKEN]
         for word in self.get_actions():
             self.add_sentence(word)

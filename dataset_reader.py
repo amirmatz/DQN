@@ -7,7 +7,7 @@ import config
 
 splitter = re.compile("[ \-]")
 _mode_to_files = {
-    "train": ["train_qdmr.csv", "train_high.csv", "train_forms.csv"],  # TODO: insert desired input path
+    "train": ["train_qdmr.csv", "train_high.csv", "train_forms.csv"],
     "test": ["test_qdmr.csv", "test_high.csv", "test_forms.csv"],
     "dev": ["dev_qdmr.csv", "dev_high.csv", "dev_forms.csv"]
 }
@@ -18,9 +18,6 @@ def remove_tokens(word: str) -> str:
 
 
 def wrap_sentence(sentence: str) -> List[str]:
-    # sentence = [clean_word(word) for word in sentence.split()]
-    # sentence = [word for word in sentence if any(word)]
-    # TODO: removing all words without letter or chars. seems right but reconsider
     words = [w for w in splitter.split(sentence)]
     words = [remove_tokens(w) for w in words]
     words = [word for word in words if word]
