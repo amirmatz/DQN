@@ -6,7 +6,7 @@ from typing import Deque
 import torch
 
 import config
-from actor import Actor
+from actor_copy import ActorCopy
 from critic import Critic
 from dataset_reader import DataSetReader
 from language import Lang
@@ -25,7 +25,7 @@ def train():
     experiences_buffer = deque(maxlen=config.MAX_EXPERIENCES_SIZE)
     word2vec = LightWord2Vec()
     lang = Lang(word2vec.get_vocab())
-    actor = Actor(config.EMBEDDING_SIZE, config.STATE_SIZE, lang, word2vec)
+    actor = ActorCopy(config.EMBEDDING_SIZE, config.STATE_SIZE, lang, word2vec)
     critic = Critic(config.STATE_SIZE, config.EMBEDDING_SIZE, config.CRITIC_HIDDEN_SIZE)
     reader = DataSetReader('train')
     critic_optimizer = torch.optim.Adam(critic.parameters())
@@ -44,7 +44,7 @@ def train():
         for x, y in reader.read(config.TRAIN_BATCH_SIZE):
             for sentence, target_sentence in zip(x, y):
                 states, actions, probs = actor(sentence, get_possible_actions(lang, sentence))
-                predicted_sentence = [lang.index2word[int(action)] for action in actions[:-1]]  # Skip None
+                predicted_sentence = actions[:-1]  # Skip None
 
                 # todo think maybe about a better reward function
                 rewards = [bleu_reward(target_sentence[:i + 1], predicted_sentence[:i + 1]) for i in
@@ -63,7 +63,7 @@ def train():
 
         for idx in range(exp_length):
             exp = experiences_buffer[random.randint(0, exp_length - 1)]
-            action_emb = word2vec[lang.index2word[int(exp.action)]]
+            action_emb = word2vec[exp.action]
             q_estimated.append(critic(exp.state, action_emb)[0, 0])
             q_s[idx] = exp.reward
             if exp.next_state is not None:
@@ -76,6 +76,7 @@ def train():
 
         critic_optimizer.zero_grad()
         loss = critic_criterion(q_s, q_estimated)
+
         loss.backward(retain_graph=True)
         critic_optimizer.step()
 
