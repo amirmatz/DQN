@@ -13,7 +13,7 @@ You can configure the path of the input dataset in `dataset_reader.py` in the `_
 ## Installation
 Installation instructions:  
 
-    # $ conda create --name nlp_project --file nlp_project_env.txt
+    # $ conda env create -f env.yml
 
 ## Training
 How to train the model:  
